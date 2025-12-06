@@ -1,0 +1,68 @@
+# Holon Optibus Configuration
+# This file contains the configuration for Holon public transit network optimization
+
+## Key Configuration Sections:
+
+### Driver Split Duty Preferences
+- Distance threshold between start/end stops: 2
+- Min split piece length: 3:00 hours
+- Split time compensation: 1:00 hour
+- Max split count per duty: 1
+
+### Depots
+- Depot 61003: Total capacity 300 vehicles
+- Depot 99902: Total capacity 20 vehicles, enabled
+
+### Route Groups
+- Group 26_126: Routes 14026, 11126
+- Group 22_35_77: Routes 46022, 36035, 36077  
+
+### Cost Parameters
+- Driver daily fixed cost: 120
+- Hourly wage: 40
+- Vehicle daily fixed cost: 200
+- Distance unit cost: 6
+
+### Driver Work Limitations
+- Maximum driver work time: 12:00 hours
+- Maximum duty length: 16:00 hours
+- Required break length: 0:30 hours
+- Window length: 4:00 hours
+
+### Algorithm Parameters (DEEP)
+- VIP version: 3
+- Advanced vehicle optimization: enabled
+- Create duties without changeovers: enabled
+- Allow end of day depot replacements: enabled
+- Attempt enrich with deadhead: enabled
+- Middle pieces enabled: true
+- Min spread for 3P: 7:00 hours
+- Max accumulated time between pieces: 5:00 hours
+
+### Duty Type Preferences
+- Morning shift: Start 04:00-08:30, Work 70-1130 min
+- Noon shift: Start 12:00-16:00, Work 730-1130 min  
+- Full Day: Start 04:30-07:30, Work 90-1130 min, Penalty: 30
+- Split duty: Start 05:00-07:30, Work 100-1150 min, Split duration 20-30, Penalty: 10
+
+### Split Shift / Midday Park
+- Minimal break length: 2:00 hours
+- Minimum park time: 1:30 hours
+- Circular depots: enabled
+- Parking cost: 100
+
+### Relief Point Preferences
+- Depots are relief points: true
+- Drive to relief point: false
+- Pull relief locations enabled with DEEP integration
+
+### Vehicle Schedule Locks
+- Locked vehicles: 5552201-5552231, 5555201-5555203
+
+### Export Formats
+- Metropoline horizontal format
+- Fleet Control integration with specific depot mappings
+
+---
+Note: This is a structured summary. Full configuration contains detailed Python expressions, 
+custom code enrichments, and complex preference definitions.
