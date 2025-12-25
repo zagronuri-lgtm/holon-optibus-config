@@ -1,0 +1,855 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>מנתח סדרן 19.5 - Vehicles Count Fix</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        body { font-family: system-ui, -apple-system, sans-serif; background-color: #f8fafc; color: #0f172a; }
+        .layout { display: grid; grid-template-columns: 300px 1fr; min-height: 100vh; }
+        .sidebar { background: white; border-left: 1px solid #e2e8f0; padding: 24px; position: sticky; top: 0; height: 100vh; overflow-y: auto; z-index: 50; box-shadow: -5px 0 15px rgba(0,0,0,0.03); display: flex; flex-direction: column; gap: 20px; }
+        .main { padding: 32px; overflow-y: auto; }
+
+        /* Cards */
+        .card { background: white; border-radius: 12px; padding: 20px; border: 1px solid #e2e8f0; box-shadow: 0 2px 4px rgba(0,0,0,0.05); transition: transform 0.2s; }
+        .card:hover { transform: translateY(-2px); border-color: #cbd5e1; }
+        .stat-val { font-size: 2rem; font-weight: 800; line-height: 1; margin-top: 5px; }
+        .stat-lbl { font-size: 0.75rem; font-weight: 700; text-transform: uppercase; color: #64748b; }
+        .stat-sub { font-size: 0.8rem; font-weight: 600; color: #ef4444; margin-top: 4px; }
+
+        /* Tables */
+        .table-wrap { background: white; border-radius: 8px; border: 1px solid #e2e8f0; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }
+        .data-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+        .data-table th { background: #f8fafc; color: #475569; font-weight: 700; text-align: right; padding: 12px 16px; border-bottom: 2px solid #e2e8f0; white-space: nowrap; position: sticky; top: 0; z-index: 10; }
+        .data-table td { padding: 12px 16px; border-bottom: 1px solid #f1f5f9; color: #334155; vertical-align: middle; }
+        .data-table tr:hover { background-color: #f8fafc; }
+
+        /* Clickable Elements */
+        .clickable { color: #2563eb; cursor: pointer; text-decoration: underline; font-weight: bold; }
+        .clickable:hover { color: #1e40af; }
+
+        /* Modal */
+        .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 100; display: flex; align-items: center; justify-content: center; opacity: 0; pointer-events: none; transition: opacity 0.2s; }
+        .modal.open { opacity: 1; pointer-events: auto; }
+        .modal-content { background: white; border-radius: 12px; width: 90%; max-width: 900px; max-height: 90vh; display: flex; flex-direction: column; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1); }
+        .modal-header { padding: 20px; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; }
+        .modal-body { padding: 20px; overflow-y: auto; }
+        .close-btn { background: #f1f5f9; border-radius: 50%; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: 0.2s; }
+        .close-btn:hover { background: #e2e8f0; color: #ef4444; }
+
+        /* Tabs */
+        .tabs-nav { display: flex; gap: 8px; border-bottom: 1px solid #e2e8f0; margin-bottom: 24px; padding-bottom: 1px; overflow-x: auto; }
+        .tab-btn { padding: 10px 16px; border-radius: 6px 6px 0 0; font-weight: 600; color: #64748b; cursor: pointer; border-bottom: 3px solid transparent; transition: all 0.2s; white-space: nowrap; display: flex; align-items: center; gap: 6px; }
+        .tab-btn.active { background: white; color: #2563eb; border-bottom-color: #2563eb; }
+        .badge { background: #e2e8f0; color: #475569; font-size: 0.7rem; padding: 2px 6px; border-radius: 10px; }
+        .tab-btn.active .badge { background: #dbeafe; color: #1e40af; }
+
+        /* Upload Box */
+        .upload-box { border: 2px dashed #cbd5e1; background: #f8fafc; border-radius: 12px; padding: 16px; text-align: center; cursor: pointer; transition: 0.2s; }
+        .upload-box:hover { background: #f1f5f9; border-color: #64748b; }
+        .upload-box.done { border-color: #10b981; background: #f0fdf4; }
+
+        /* Inputs */
+        select { width: 100%; padding: 8px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.85rem; background: #f8fafc; margin-bottom: 8px; }
+        label { display: block; font-size: 0.75rem; font-weight: 700; color: #475569; margin-bottom: 2px; }
+        
+        .hidden { display: none !important; }
+        .text-good { color: #10b981; font-weight: bold; }
+        .text-bad { color: #ef4444; font-weight: bold; }
+        .day-badge { font-size: 0.75rem; color: #64748b; font-weight: normal; margin-right: 4px; }
+        
+        /* Time Tags */
+        .tag { padding: 2px 6px; border-radius: 4px; font-size: 0.7rem; font-weight: 700; border: 1px solid transparent; }
+        .tag-morning { background: #ffedd5; color: #c2410c; border-color: #fed7aa; } 
+        .tag-noon { background: #fef9c3; color: #a16207; border-color: #fde047; } 
+        .tag-night { background: #e2e8f0; color: #475569; border-color: #cbd5e1; } 
+        .tag-long { background: #f3e8ff; color: #7e22ce; border-color: #d8b4fe; } 
+        .swap-time { font-family: monospace; font-weight: 800; font-size: 0.9rem; color: #e11d48; }
+
+        /* Reason Badges */
+        .reason-chain { background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
+        .reason-local { background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; }
+        .reason-split { background: #f3e8ff; color: #6b21a8; border: 1px solid #d8b4fe; }
+        .reason-break { background: #fee2e2; color: #b91c1c; border: 1px solid #f87171; }
+    </style>
+</head>
+<body>
+
+<div class="layout">
+    
+    <aside class="sidebar">
+        <div>
+            <h1 class="text-2xl font-black text-slate-800 flex items-center gap-2">
+                <i class="fas fa-link text-blue-600"></i> מנתח סדרן
+            </h1>
+            <p class="text-xs text-slate-500 font-bold mt-1">גרסה 19.5 | Vehicles Added</p>
+        </div>
+
+        <div id="step-upload" class="upload-box" onclick="document.getElementById('fileIn').click()">
+            <div class="font-bold text-sm text-slate-700"><i class="fas fa-cloud-upload-alt text-xl mb-2 block text-blue-500"></i> טען קובץ ביצוע</div>
+            <div class="text-xs text-slate-400 mt-1">Excel או CSV</div>
+            <input type="file" id="fileIn" class="hidden" accept=".csv, .xlsx" onchange="loadFile(event)">
+        </div>
+
+        <div id="step-map" class="hidden bg-white border border-slate-200 p-4 rounded-xl shadow-sm">
+            <h3 class="font-bold text-sm mb-3 border-b pb-2">מיפוי עמודות</h3>
+            <label>תאריך (A)</label><select id="c-date"></select>
+            <label>נהג (C)</label><select id="c-driver"></select>
+            <label>סידור תכנון (D)</label><select id="c-plan"></select>
+            <label>סידור ביצוע (E)</label><select id="c-act"></select>
+            <label>התחלה תכנון (F)</label><select id="c-start"></select>
+            <label>התחלה בפועל (H)</label><select id="c-start-act"></select>
+            <label>סיום בפועל (I)</label><select id="c-end-act"></select>
+            <label>מספר רכב</label><select id="c-veh"></select>
+            <label>תיאור קו</label><select id="c-desc"></select>
+
+            <button onclick="run()" class="w-full bg-blue-600 text-white py-2.5 rounded-lg font-bold text-sm mt-2 hover:bg-blue-700 shadow transition">
+                בצע ניתוח
+            </button>
+        </div>
+
+        <div class="mt-auto space-y-3">
+            <button onclick="exportExcel()" class="w-full bg-green-600 text-white py-3 rounded-lg text-sm font-bold hover:bg-green-700 shadow flex items-center justify-center gap-2">
+                <i class="fas fa-file-excel"></i> ייצא לאקסל
+            </button>
+            <button onclick="downloadHTML()" class="w-full bg-slate-800 text-white py-3 rounded-lg text-sm font-bold hover:bg-slate-900 shadow flex items-center justify-center gap-2">
+                <i class="fas fa-download"></i> שמור כלי HTML
+            </button>
+        </div>
+    </aside>
+
+    <main class="main">
+        
+        <div id="empty" class="h-full flex flex-col items-center justify-center text-slate-400">
+            <i class="fas fa-project-diagram text-6xl mb-4 opacity-20"></i>
+            <h2 class="text-xl font-bold">המערכת מוכנה</h2>
+            <p class="text-sm">טען קובץ לקבלת ניתוח סיבות איחור</p>
+        </div>
+
+        <div id="dash" class="hidden flex flex-col gap-6">
+            
+            <div class="relative">
+                <i class="fas fa-search absolute right-4 top-3.5 text-slate-400"></i>
+                <input type="text" id="search" onkeyup="filter()" placeholder="חיפוש חופשי..." class="w-full p-3 pr-10 border rounded-lg shadow-sm outline-none focus:ring-2 focus:ring-blue-500">
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
+                <div class="card border-t-4 border-green-500">
+                    <div class="stat-lbl">דייקנות יציאה</div>
+                    <div class="stat-val text-green-600" id="k-pun">-</div>
+                    <div class="stat-sub" id="k-pun-sub">-</div>
+                </div>
+                <div class="card border-t-4 border-purple-500">
+                    <div class="stat-lbl">פיצול נהגים</div>
+                    <div class="stat-val text-purple-600" id="k-split">0</div>
+                    <div class="text-[10px] text-slate-400">סידורים עם >2 נהגים</div>
+                </div>
+                <div class="card border-t-4 border-orange-500">
+                    <div class="stat-lbl">חפיפות זמנים</div>
+                    <div class="stat-val text-orange-600" id="k-over">0</div>
+                </div>
+                <div class="card border-t-4 border-red-500">
+                    <div class="stat-lbl">שבירות סידור</div>
+                    <div class="stat-val text-red-600" id="k-break">0</div>
+                </div>
+                <div class="card border-t-4 border-blue-500">
+                    <div class="stat-lbl">נהגים פעילים</div>
+                    <div class="stat-val text-slate-700" id="k-driver">0</div>
+                </div>
+            </div>
+
+            <div>
+                <div class="tabs-nav">
+                    <div class="tab-btn active" onclick="tab('daily', this)">📅 סיכום יומי</div>
+                    <div class="tab-btn" onclick="tab('pun', this)">⏱️ דייקנות <span class="badge" id="b-pun">0</span></div>
+                    <div class="tab-btn" onclick="tab('split', this)">🚍 החלפות ופיצולים <span class="badge" id="b-split">0</span></div>
+                    <div class="tab-btn" onclick="tab('over', this)">⚠️ חפיפות <span class="badge" id="b-over">0</span></div>
+                    <div class="tab-btn" onclick="tab('break', this)">🚨 שבירות <span class="badge" id="b-break">0</span></div>
+                </div>
+
+                <div id="v-daily" class="view">
+                    <div class="table-wrap">
+                        <table id="t-daily" class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>תאריך ויום</th>
+                                    <th>נהגים</th>
+                                    <th>שבירות</th>
+                                    <th>חפיפות</th>
+                                    <th>פיצולים (>2)</th>
+                                    <th>דייקנות</th>
+                                    <th>סה"כ מבוצע</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div id="v-split" class="view hidden">
+                    <div class="table-wrap max-h-[600px] overflow-auto">
+                        <table id="t-split" class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>תאריך</th>
+                                    <th>סידור (לחץ לפירוט)</th>
+                                    <th>שעת התחלה</th>
+                                    <th>שעת החלפה ראשונה</th>
+                                    <th>סה"כ נהגים</th>
+                                    <th>סה"כ רכבים</th> <th>פירוט נהגים (לחץ לסידור נהג)</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div id="v-pun" class="view hidden">
+                    <div class="p-4 bg-red-50 border border-red-100 rounded mb-4 text-sm text-red-900 flex justify-between items-center">
+                        <div>
+                            <i class="fas fa-link"></i> <strong>ניתוח איחורים:</strong> 
+                            המערכת בודקת האם האיחור נבע מנסיעה קודמת שהסתיימה מאוחר.
+                        </div>
+                        <div id="pun-summary" class="font-bold"></div>
+                    </div>
+                    <div class="table-wrap max-h-[600px] overflow-auto">
+                        <table id="t-pun" class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>תאריך</th>
+                                    <th>קו</th>
+                                    <th>נהג</th>
+                                    <th>תכנון</th>
+                                    <th>בפועל</th>
+                                    <th>איחור</th>
+                                    <th>ניתוח סיבה</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div id="v-over" class="view hidden">
+                    <div class="table-wrap max-h-[600px] overflow-auto">
+                        <table id="t-over" class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>חזרות</th>
+                                    <th>תאריך</th>
+                                    <th>סידור (לחץ לפירוט)</th>
+                                    <th>נהג (לחץ לסידור נהג)</th>
+                                    <th>סיום נסיעה 1</th>
+                                    <th>התחלה נסיעה 2</th>
+                                    <th>חפיפה</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div id="v-break" class="view hidden">
+                    <div class="table-wrap max-h-[600px] overflow-auto">
+                        <table id="t-break" class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>תאריך</th>
+                                    <th>תכנון (לחץ לפירוט)</th>
+                                    <th>ביצוע</th>
+                                    <th>נהג (לחץ לסידור נהג)</th>
+                                    <th>תיאור</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </main>
+</div>
+
+<div id="modal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 id="modal-title" class="text-lg font-black text-slate-800">פרטים</h3>
+            <div class="close-btn" onclick="closeModal()"><i class="fas fa-times"></i></div>
+        </div>
+        <div class="modal-body" id="modal-body">
+            </div>
+    </div>
+</div>
+
+<script>
+    let raw = [], heads = [];
+    let lastAnalysis = null; 
+
+    // --- Time Windows ---
+    const RANGES = [
+        { name: 'לילה', start: 0, end: 360, css: 'tag-night' },         
+        { name: 'שיא בוקר', start: 360, end: 570, css: 'tag-morning' },   
+        { name: 'שפל בוקר', start: 570, end: 870, css: 'tag-off-morning' }, 
+        { name: 'שיא צהריים', start: 870, end: 1050, css: 'tag-noon' },   
+        { name: 'שפל צהריים', start: 1050, end: 1260, css: 'tag-off-noon' }, 
+        { name: 'לילה', start: 1260, end: 1440, css: 'tag-night' }      
+    ];
+
+    function getTimeTagText(m) {
+        if (!m && m !== 0) return '';
+        let t = m; while(t >= 1440) t -= 1440;
+        for (let r of RANGES) {
+            if (t >= r.start && t < r.end) return r.name;
+        }
+        return '';
+    }
+
+    function getTimeTagHTML(m) {
+        if (!m && m !== 0) return '';
+        let t = m; while(t >= 1440) t -= 1440;
+        for (let r of RANGES) {
+            if (t >= r.start && t < r.end) return `<span class="tag ${r.css}">${r.name}</span>`;
+        }
+        return '';
+    }
+
+    // Load
+    function loadFile(e) {
+        const f = e.target.files[0];
+        if(!f) return;
+        const r = new FileReader();
+        const done = (rows) => {
+            raw = rows; heads = rows[0];
+            initMap();
+            document.getElementById('step-upload').classList.add('hidden');
+            document.getElementById('step-map').classList.remove('hidden');
+        };
+        if(f.name.endsWith('.csv')) {
+            r.onload = ev => Papa.parse(ev.target.result, {complete:res=>done(res.data), skipEmptyLines:true});
+            r.readAsText(f, 'UTF-8');
+        } else {
+            r.onload = ev => {
+                const wb = XLSX.read(new Uint8Array(ev.target.result), {type:'array'});
+                done(XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], {header:1, raw:false}));
+            };
+            r.readAsArrayBuffer(f);
+        }
+    }
+
+    function initMap() {
+        const m = [
+            {id:'c-date', d:0}, {id:'c-driver', d:2}, {id:'c-plan', d:3}, 
+            {id:'c-act', d:4}, {id:'c-start', d:5}, {id:'c-start-act', d:7}, 
+            {id:'c-end-act', d:8}, {id:'c-veh', d:12}, {id:'c-desc', d:11}
+        ];
+        m.forEach(x => {
+            const el = document.getElementById(x.id);
+            el.innerHTML = '';
+            if(x.id.includes('veh') || x.id.includes('desc')) el.add(new Option('(ללא)', -1));
+            heads.forEach((h,i) => el.add(new Option(`[${i}] ${h}`, i)));
+            if(x.d!==-1 && heads[x.d]) el.value = x.d;
+        });
+    }
+
+    // Utils
+    const norm = (v) => {
+        if (v == null) return '';
+        let s = String(v).trim();
+        if (s.endsWith('.0')) s = s.slice(0, -2);
+        return s;
+    };
+
+    const toMin = v => {
+        if(v==null) return null;
+        if(typeof v==='number') return Math.round(v*1440);
+        const p = v.toString().trim().split(':');
+        if(p.length<2) return null;
+        return parseInt(p[0])*60 + parseInt(p[1]);
+    };
+    
+    const fmtTime = m => {
+        if(m>=1440) m-=1440;
+        return `${Math.floor(m/60).toString().padStart(2,'0')}:${(m%60).toString().padStart(2,'0')}`;
+    }
+
+    const getDayName = (dateStr) => {
+        if(!dateStr) return '';
+        const p = dateStr.toString().split(/[/-]/);
+        if(p.length===3) {
+            const d = new Date(p[2], p[1]-1, p[0]);
+            const days = ['א\'','ב\'','ג\'','ד\'','ה\'','ו\'','ש\''];
+            if(!isNaN(d.getDay())) return days[d.getDay()];
+        }
+        return '';
+    };
+
+    // Run
+    function run() {
+        const C = {
+            date: +document.getElementById('c-date').value,
+            drv: +document.getElementById('c-driver').value,
+            plan: +document.getElementById('c-plan').value,
+            act: +document.getElementById('c-act').value,
+            sPlan: +document.getElementById('c-start').value,
+            sAct: +document.getElementById('c-start-act').value,
+            eAct: +document.getElementById('c-end-act').value,
+            veh: +document.getElementById('c-veh').value,
+            desc: +document.getElementById('c-desc').value
+        };
+
+        const res = { daily: {}, lates: [], splits: [], overlaps: [], breaks: [], drivers: new Set() };
+        const dutyGroups = {}; 
+        const dutyStats = {}; 
+        const fps = {};
+        const driverTimeline = {};
+
+        raw.slice(1).forEach(row => {
+            if(row.length < 5) return;
+            const dStr = row[C.date];
+            const drv = row[C.drv];
+            const plan = norm(row[C.plan]);
+            const act = norm(row[C.act]);
+            
+            const sP = toMin(row[C.sPlan]);
+            const sA = toMin(row[C.sAct]);
+            const eA = toMin(row[C.eAct]);
+            const veh = C.veh!=-1 ? row[C.veh] : null;
+            const desc = C.desc!=-1 ? row[C.desc] : '';
+
+            if(sP===null) return;
+
+            // Init Daily
+            if(!res.daily[dStr]) res.daily[dStr] = { 
+                date: dStr, breaks:0, overlaps:0, splits:0, 
+                tripCount:0, lateCount:0, rowCount:0, 
+                punTripCount: 0, 
+                drivers: new Set() 
+            };
+            const day = res.daily[dStr];
+            day.tripCount++;
+            day.rowCount++;
+            if(drv) { day.drivers.add(drv); res.drivers.add(drv); }
+
+            // Store for timeline analysis
+            if(drv && sA!==null && eA!==null) {
+                const k = `${drv}_${dStr}`;
+                if(!driverTimeline[k]) driverTimeline[k] = [];
+                let realEnd = eA < sA ? eA+1440 : eA;
+                driverTimeline[k].push({
+                    sP, sA, eA: realEnd, plan, act, desc, date: dStr, veh
+                });
+            }
+
+            // Break
+            if(plan != act) {
+                res.breaks.push({date:dStr, plan, act, drv, desc});
+                day.breaks++;
+            }
+
+            // Grouping for Splits/Overlaps
+            if(plan) {
+                const k = dStr + '_' + plan;
+                
+                if(!dutyStats[k]) dutyStats[k] = { drv:new Set(), veh:new Set(), trips:[] };
+                if(drv) dutyStats[k].drv.add(drv);
+                if(veh) dutyStats[k].veh.add(veh);
+                
+                if(sA !== null) dutyStats[k].trips.push({ s: sA, d: drv, v: veh });
+
+                if(!dutyGroups[k]) dutyGroups[k] = [];
+                if(eA!==null) {
+                    let realEnd = eA < sP ? eA+1440 : eA; 
+                    dutyGroups[k].push({
+                        start: sP, end: realEnd,
+                        sA: sA, eA: realEnd, // Added actual times for drill down
+                        ds: row[C.sPlan], de: row[C.eAct],
+                        drv, desc, duty: plan, date: dStr, veh // Added vehicle for drill down
+                    });
+                }
+            }
+        });
+
+        // 1. Analyze Timeline
+        Object.keys(driverTimeline).forEach(k => {
+            let trips = driverTimeline[k];
+            trips.sort((a,b) => a.sA - b.sA);
+
+            // Deduplication
+            const unique = [];
+            for(let i=0; i<trips.length; i++){
+                if(i>0 && Math.abs(trips[i].sA - trips[i-1].sA) < 1 && Math.abs(trips[i].eA - trips[i-1].eA) < 1) continue;
+                unique.push(trips[i]);
+            }
+            trips = unique;
+            driverTimeline[k] = trips; // Update timeline with unique trips for modal display
+
+            const drv = k.split('_')[0];
+            const date = k.split('_')[1];
+
+            for(let i=0; i<trips.length; i++) {
+                const trip = trips[i];
+                res.daily[date].punTripCount++;
+                
+                const diff = trip.sA - trip.sP;
+                if(diff > 5 && diff < 120) {
+                    res.daily[date].lateCount++;
+                    let reason = 'מקומי';
+                    let css = 'reason-local';
+                    let suffix = '';
+
+                    if (i > 0) {
+                        const prev = trips[i-1];
+                        if (prev.eA > trip.sP) {
+                            reason = '🔗 נגרר מנסיעה קודמת';
+                            css = 'reason-chain';
+                            suffix = `(איחור בחפיפות)`;
+                        }
+                    }
+
+                    if (reason === 'מקומי' && trip.plan != trip.act) {
+                        reason = '🚨 שבירת סידור';
+                        css = 'reason-break';
+                    }
+
+                    res.lates.push({
+                        date: date, line: trip.desc, drv, 
+                        plan: fmtTime(trip.sP), act: fmtTime(trip.sA), 
+                        diff, reason, css, suffix
+                    });
+                }
+            }
+        });
+
+        // 2. Calc Overlaps
+        Object.values(dutyGroups).forEach(trips => {
+            trips.sort((a,b) => a.start - b.start);
+            for(let i=0; i<trips.length-1; i++) {
+                const c = trips[i], n = trips[i+1];
+                if(c.end > n.start + 1) { 
+                    const gap = c.end - n.start;
+                    const fp = c.duty + c.ds + n.ds;
+                    if(!fps[fp]) fps[fp] = new Set();
+                    fps[fp].add(c.date);
+                    res.overlaps.push({
+                        date: c.date, duty: c.duty, drv: c.drv,
+                        e1: c.de, s2: n.ds, gap, fp
+                    });
+                    res.daily[c.date].overlaps++;
+                }
+            }
+        });
+        res.overlaps.forEach(o => o.rec = fps[o.fp].size);
+        res.overlaps.sort((a,b) => b.rec - a.rec);
+
+        // 3. Calc Splits
+        Object.entries(dutyStats).forEach(([key, s]) => {
+            if(s.drv.size > 2) {
+                const [date, duty] = key.split('_');
+                s.trips.sort((a,b) => a.s - b.s);
+                let firstD = s.trips[0].d;
+                let firstV = s.trips[0].v;
+                let swapTime = null;
+                let startTime = s.trips[0].s;
+
+                for(let i=1; i<s.trips.length; i++) {
+                    if(s.trips[i].d !== firstD || (s.trips[i].v && s.trips[i].v !== firstV)) {
+                        swapTime = s.trips[i].s;
+                        break;
+                    }
+                }
+
+                res.splits.push({
+                    date, duty, dc: s.drv.size, vc: s.veh.size,
+                    start: startTime, swap: swapTime,
+                    drivers: s.drv // Pass Set of drivers for drill down
+                });
+                if(res.daily[date]) res.daily[date].splits++;
+            }
+        });
+
+        lastAnalysis = res;
+        lastAnalysis.driverTimeline = driverTimeline; // Store for drill down
+        lastAnalysis.dutyGroups = dutyGroups; // Store for drill down
+        render(res);
+    }
+
+    function render(d) {
+        document.getElementById('step-map').classList.add('hidden');
+        document.getElementById('empty').classList.add('hidden');
+        document.getElementById('dash').classList.remove('hidden');
+
+        // KPIs
+        const totalPerformed = Object.values(d.daily).reduce((a,b)=>a+b.punTripCount, 0);
+        const totalLate = d.lates.length;
+        const punRate = totalPerformed ? ((1 - totalLate/totalPerformed)*100).toFixed(1) : '0.0';
+        
+        const kPun = document.getElementById('k-pun');
+        kPun.innerText = punRate + '%';
+        kPun.className = 'stat-val ' + (parseFloat(punRate)>95 ? 'text-good' : 'text-bad');
+        document.getElementById('k-pun-sub').innerText = `${totalLate} חריגות מתוך ${totalPerformed}`;
+
+        document.getElementById('k-split').innerText = d.splits.length;
+        document.getElementById('k-over').innerText = d.overlaps.length;
+        document.getElementById('k-break').innerText = d.breaks.length;
+        document.getElementById('k-driver').innerText = d.drivers.size;
+
+        // Badges
+        document.getElementById('b-pun').innerText = d.lates.length;
+        document.getElementById('b-split').innerText = d.splits.length;
+        document.getElementById('b-over').innerText = d.overlaps.length;
+        document.getElementById('b-break').innerText = d.breaks.length;
+        
+        document.getElementById('pun-summary').innerText = `סה"כ ${d.lates.length} איחורים מתוך ${totalPerformed} נסיעות שבוצעו (${punRate}%)`;
+
+        // Daily
+        const tbD = document.querySelector('#t-daily tbody');
+        tbD.innerHTML = '';
+        Object.values(d.daily).sort().forEach(r => {
+            const pun = r.punTripCount ? ((1 - r.lateCount/r.punTripCount)*100).toFixed(1)+'%' : '-';
+            const dayName = getDayName(r.date);
+            tbD.innerHTML += `<tr>
+                <td class="font-bold">${r.date} <span class="day-badge">${dayName}</span></td>
+                <td>${r.drivers.size}</td>
+                <td class="${r.breaks>0?'text-bad':''} font-bold">${r.breaks}</td>
+                <td class="${r.overlaps>0?'text-orange-500':''} font-bold">${r.overlaps}</td>
+                <td class="${r.splits>0?'text-purple-600':''} font-bold">${r.splits}</td>
+                <td class="font-bold">${pun} <span class="text-[10px] text-slate-400">(${r.lateCount}/${r.punTripCount})</span></td>
+                <td>${r.punTripCount}</td>
+            </tr>`;
+        });
+
+        // Splits
+        const tbS = document.querySelector('#t-split tbody');
+        tbS.innerHTML = '';
+        d.splits.forEach(s => {
+            const dayName = getDayName(s.date);
+            const timeTag = s.swap ? getTimeTagHTML(s.swap) : '-';
+            const swapDisplay = s.swap ? `<div class="swap-time">🔄 ${fmtTime(s.swap)}</div><div>${timeTag}</div>` : '-';
+            
+            // Build clickable driver list
+            const drvListHtml = Array.from(s.drivers).map(drv => 
+                `<span class="clickable" onclick="showDriver('${drv.replace(/'/g, "\\'")}', '${s.date}')">${drv}</span>`
+            ).join(', ');
+
+            tbS.innerHTML += `<tr>
+                <td>${s.date} <span class="day-badge">${dayName}</span></td>
+                <td class="font-bold text-purple-700 clickable" onclick="showDuty('${s.duty}', '${s.date}')">${s.duty}</td>
+                <td class="text-xs font-bold text-slate-500">${fmtTime(s.start)}</td>
+                <td>${swapDisplay}</td>
+                <td class="font-bold text-center text-lg">${s.dc}</td>
+                <td class="text-center font-bold">${s.vc}</td>
+                <td class="text-xs text-slate-500">${drvListHtml}</td>
+            </tr>`;
+        });
+
+        // Punctuality
+        const tbP = document.querySelector('#t-pun tbody');
+        tbP.innerHTML = '';
+        d.lates.forEach(l => {
+            tbP.innerHTML += `<tr>
+                <td>${l.date}</td>
+                <td class="text-xs text-slate-500">${l.line}</td>
+                <td>${l.drv}</td>
+                <td>${l.plan}</td>
+                <td class="font-bold text-red-600">${l.act}</td>
+                <td>${l.diff}</td>
+                <td><span class="tag ${l.css}">${l.reason}</span> <span class="text-[9px] text-red-600">${l.suffix}</span></td>
+            </tr>`;
+        });
+
+        // Overlaps
+        const tbO = document.querySelector('#t-over tbody');
+        tbO.innerHTML = '';
+        d.overlaps.forEach(o => {
+            const dayName = getDayName(o.date);
+            let bg = o.rec>=3 ? 'bg-red-100 text-red-800 font-bold px-2 rounded' : '';
+            // --- NEW: Added Clickable Duty and Driver in Overlaps ---
+            tbO.innerHTML += `<tr>
+                <td><span class="${bg}">${o.rec}</span></td>
+                <td>${o.date} <span class="day-badge">${dayName}</span></td>
+                <td class="font-mono font-bold"><span class="clickable" onclick="showDuty('${o.duty}', '${o.date}')">${o.duty}</span></td>
+                <td><span class="clickable" onclick="showDriver('${o.drv.replace(/'/g, "\\'")}', '${o.date}')">${o.drv}</span></td>
+                <td class="text-xs text-slate-500">${o.e1}</td>
+                <td class="text-xs font-bold text-blue-600">${o.s2}</td>
+                <td class="font-bold text-red-600 dir-ltr">${o.gap} דק'</td>
+            </tr>`;
+        });
+
+        // Breaks
+        const tbB = document.querySelector('#t-break tbody');
+        tbB.innerHTML = '';
+        d.breaks.forEach(b => {
+            const dayName = getDayName(b.date);
+            // --- NEW: Added Clickable Plan and Driver in Breaks ---
+            tbB.innerHTML += `<tr>
+                <td>${b.date} <span class="day-badge">${dayName}</span></td>
+                <td class="font-bold text-red-600"><span class="clickable" onclick="showDuty('${b.plan}', '${b.date}')">${b.plan}</span></td>
+                <td class="font-mono">${b.act}</td>
+                <td><span class="clickable" onclick="showDriver('${b.drv.replace(/'/g, "\\'")}', '${b.date}')">${b.drv}</span></td>
+                <td class="text-xs text-slate-500 truncate max-w-xs">${b.desc}</td>
+            </tr>`;
+        });
+    }
+
+    // --- Modal Logic ---
+    function openModal() {
+        document.getElementById('modal').classList.add('open');
+    }
+
+    function closeModal() {
+        document.getElementById('modal').classList.remove('open');
+    }
+
+    function showDuty(dutyId, date) {
+        if (!lastAnalysis || !lastAnalysis.dutyGroups) return;
+        const key = date + '_' + dutyId;
+        const trips = lastAnalysis.dutyGroups[key];
+
+        if (!trips) return alert('לא נמצאו נתונים לסידור זה (ייתכן שזו נסיעה בודדת ללא הקשר סידור)');
+
+        // Sort by time
+        trips.sort((a,b) => a.start - b.start);
+
+        let html = `<table class="data-table w-full"><thead><tr>
+            <th>נהג</th><th>תכנון</th><th>ביצוע</th><th>רכב</th><th>קו</th>
+        </tr></thead><tbody>`;
+
+        trips.forEach(t => {
+            html += `<tr>
+                <td class="font-bold">${t.drv}</td>
+                <td>${fmtTime(t.start)} - ${fmtTime(t.end)}</td>
+                <td class="dir-ltr text-right">${t.ds} - ${t.de}</td>
+                <td>${t.veh || '-'}</td>
+                <td class="text-xs text-slate-500">${t.desc}</td>
+            </tr>`;
+        });
+        html += `</tbody></table>`;
+
+        document.getElementById('modal-title').innerText = `פירוט סידור ${dutyId} בתאריך ${date}`;
+        document.getElementById('modal-body').innerHTML = html;
+        openModal();
+    }
+
+    function showDriver(driverName, date) {
+        if (!lastAnalysis || !lastAnalysis.driverTimeline) return;
+        const key = driverName + '_' + date;
+        const trips = lastAnalysis.driverTimeline[key];
+
+        if (!trips) return alert('לא נמצאו נתונים לנהג זה');
+
+        // Trips are already sorted and deduplicated in run()
+        
+        let html = `<table class="data-table w-full"><thead><tr>
+            <th>תכנון</th><th>ביצוע</th><th>סידור תכנון</th><th>סידור ביצוע</th><th>קו</th>
+        </tr></thead><tbody>`;
+
+        trips.forEach(t => {
+            // Highlight mismatched duties
+            const dutyClass = t.plan != t.act ? 'text-red-600 font-bold' : '';
+            
+            html += `<tr>
+                <td>${fmtTime(t.sP)}</td>
+                <td class="font-bold">${fmtTime(t.sA)} - ${fmtTime(t.eA)}</td>
+                <td>${t.plan}</td>
+                <td class="${dutyClass}">${t.act}</td>
+                <td class="text-xs text-slate-500">${t.desc}</td>
+            </tr>`;
+        });
+        html += `</tbody></table>`;
+
+        document.getElementById('modal-title').innerText = `סידור עבודה נהג: ${driverName} (${date})`;
+        document.getElementById('modal-body').innerHTML = html;
+        openModal();
+    }
+
+    // Export Logic
+    function exportExcel() {
+        if(!lastAnalysis) return alert('אין נתונים לייצוא');
+        const wb = XLSX.utils.book_new();
+        const d = lastAnalysis;
+
+        // 1. Daily
+        const dailyRows = Object.values(d.daily).map(r => ({
+            "תאריך": r.date, "יום": getDayName(r.date),
+            "נהגים": r.drivers.size, "שבירות": r.breaks,
+            "חפיפות": r.overlaps, "פיצולים": r.splits,
+            "דייקנות (%)": r.punTripCount ? (100 * (1 - r.lateCount/r.punTripCount)).toFixed(1) : 0,
+            "איחורים": r.lateCount, "נסיעות שבוצעו": r.punTripCount
+        }));
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(dailyRows), "סיכום יומי");
+
+        // 2. Splits
+        const splitRows = d.splits.map(s => ({
+            "תאריך": s.date, "יום": getDayName(s.date),
+            "סידור": s.duty,
+            "שעת התחלה": fmtTime(s.start),
+            "שעת החלפה ראשונה": s.swap ? fmtTime(s.swap) : '',
+            "חלון זמן": s.swap ? getTimeTagText(s.swap) : '',
+            "כמות נהגים": s.dc, "כמות רכבים": s.vc,
+            "פירוט נהגים": Array.from(s.drivers).join(', ')
+        }));
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(splitRows), "פיצולים");
+
+        // 3. Punctuality
+        const punRows = d.lates.map(l => ({
+            "תאריך": l.date, "יום": getDayName(l.date),
+            "קו": l.line, "נהג": l.drv,
+            "תכנון": l.plan, "ביצוע": l.act, "איחור (דק)": l.diff,
+            "סיבה": l.reason
+        }));
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(punRows), "דייקנות");
+
+        // 4. Overlaps
+        const overRows = d.overlaps.map(o => ({
+            "תאריך": o.date, "יום": getDayName(o.date),
+            "סידור": o.duty, "נהג": o.drv,
+            "חזרות": o.rec, "סיום 1": o.e1, "התחלה 2": o.s2, "פער": o.gap
+        }));
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(overRows), "חפיפות");
+
+        // 5. Breaks
+        const breakRows = d.breaks.map(b => ({
+            "תאריך": b.date, "יום": getDayName(b.date),
+            "תכנון": b.plan, "ביצוע": b.act,
+            "נהג": b.drv, "תיאור": b.desc
+        }));
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(breakRows), "שבירות");
+
+        XLSX.writeFile(wb, "sadran_analysis_v19.xlsx");
+    }
+
+    // Interaction
+    function tab(id, el) {
+        document.querySelectorAll('.view').forEach(e => e.classList.add('hidden'));
+        document.getElementById('v-'+id).classList.remove('hidden');
+        document.querySelectorAll('.tab-btn').forEach(e => e.classList.remove('active'));
+        el.classList.add('active');
+    }
+
+    function filter() {
+        const v = document.getElementById('search').value.toLowerCase();
+        ['t-daily','t-split','t-pun','t-over','t-break'].forEach(tid => {
+            Array.from(document.querySelectorAll(`#${tid} tbody tr`)).forEach(r => {
+                r.style.display = r.innerText.toLowerCase().includes(v) ? '' : 'none';
+            });
+        });
+    }
+
+    function downloadHTML() {
+        const html = document.documentElement.outerHTML;
+        const blob = new Blob([html], {type:'text/html'});
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'sadran_v19.html';
+        a.click();
+    }
+</script>
+</body>
+</html>
