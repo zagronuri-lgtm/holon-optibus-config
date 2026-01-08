@@ -1,0 +1,1293 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>כלי ניתוח מפות תנועה | תקנה 168</title>
+    <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root { --bg-primary: #000000; --bg-secondary: #0a0a0a; --bg-card: #111111; --accent-red: #ef4444; --accent-green: #22c55e; --accent-yellow: #eab308; --accent-blue: #3b82f6; --accent-cyan: #06b6d4; --accent-purple: #a855f7; --accent-orange: #f97316; --text-primary: #ffffff; --text-secondary: #888888; --border-color: #222222; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Heebo', sans-serif; background: var(--bg-primary); color: var(--text-primary); min-height: 100vh; }
+        .container { max-width: 1900px; margin: 0 auto; padding: 1rem; }
+        .header { text-align: center; margin-bottom: 1.5rem; padding: 1.5rem; background: linear-gradient(135deg, var(--bg-card), var(--bg-secondary)); border-radius: 16px; border: 1px solid var(--border-color); }
+        .header h1 { font-size: 1.8rem; font-weight: 800; background: linear-gradient(135deg, var(--accent-cyan), var(--accent-blue), var(--accent-purple)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+        .section { background: var(--bg-card); border-radius: 12px; padding: 1.25rem; border: 1px solid var(--border-color); margin-bottom: 1rem; }
+        .section-title { font-size: 1.1rem; font-weight: 700; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem; }
+        .upload-zone { border: 2px dashed var(--border-color); border-radius: 10px; padding: 1.5rem; text-align: center; cursor: pointer; transition: all 0.3s; }
+        .upload-zone:hover { border-color: var(--accent-blue); background: rgba(59, 130, 246, 0.05); }
+        .upload-zone.has-files { border-color: var(--accent-green); background: rgba(34, 197, 94, 0.05); }
+        .upload-zone input { display: none; }
+        .btn { padding: 0.5rem 1rem; border-radius: 8px; border: none; cursor: pointer; font-family: inherit; font-weight: 600; transition: all 0.2s; font-size: 0.85rem; }
+        .btn-primary { background: linear-gradient(135deg, var(--accent-blue), var(--accent-cyan)); color: white; }
+        .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3); }
+        .btn-secondary { background: var(--bg-secondary); color: var(--text-primary); border: 1px solid var(--border-color); }
+        .btn-warning { background: linear-gradient(135deg, var(--accent-orange), var(--accent-yellow)); color: #000; }
+        .btn-sm { padding: 0.3rem 0.6rem; font-size: 0.75rem; }
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 0.6rem; margin-bottom: 1rem; }
+        .stat-card { background: var(--bg-secondary); border-radius: 10px; padding: 0.8rem; text-align: center; }
+        .stat-card .value { font-size: 1.4rem; font-weight: 700; }
+        .stat-card .value.red { color: var(--accent-red); }
+        .stat-card .value.green { color: var(--accent-green); }
+        .stat-card .value.yellow { color: var(--accent-yellow); }
+        .stat-card .value.blue { color: var(--accent-blue); }
+        .stat-card .value.purple { color: var(--accent-purple); }
+        .stat-card .label { color: var(--text-secondary); font-size: 0.7rem; margin-top: 0.2rem; }
+        .info-box { background: rgba(59, 130, 246, 0.1); border: 1px solid var(--accent-blue); border-radius: 10px; padding: 0.75rem; margin-bottom: 1rem; font-size: 0.8rem; }
+        .table-wrapper { overflow-x: auto; max-height: 500px; overflow-y: auto; }
+        table { width: 100%; border-collapse: collapse; font-size: 0.75rem; }
+        th, td { padding: 0.4rem 0.3rem; text-align: center; border-bottom: 1px solid var(--border-color); white-space: nowrap; }
+        th { background: var(--bg-secondary); position: sticky; top: 0; z-index: 10; font-weight: 600; color: var(--text-secondary); cursor: pointer; font-size: 0.7rem; }
+        th:hover { color: var(--accent-cyan); }
+        tbody tr:hover { background: rgba(59, 130, 246, 0.1); }
+        tbody tr.clickable { cursor: pointer; }
+        tbody tr.clickable:hover { background: rgba(59, 130, 246, 0.2); }
+        .badge { display: inline-block; padding: 0.15rem 0.35rem; border-radius: 4px; font-size: 0.65rem; font-weight: 600; }
+        .badge-red { background: rgba(239, 68, 68, 0.2); color: var(--accent-red); }
+        .badge-yellow { background: rgba(234, 179, 8, 0.2); color: var(--accent-yellow); }
+        .badge-green { background: rgba(34, 197, 94, 0.2); color: var(--accent-green); }
+        .badge-blue { background: rgba(59, 130, 246, 0.2); color: var(--accent-blue); }
+        .badge-purple { background: rgba(168, 85, 247, 0.2); color: var(--accent-purple); }
+        .badge-gray { background: rgba(148, 163, 184, 0.2); color: var(--text-secondary); }
+        .badge-orange { background: rgba(249, 115, 22, 0.2); color: var(--accent-orange); }
+        .filters { display: flex; gap: 0.5rem; margin-bottom: 0.75rem; flex-wrap: wrap; align-items: center; }
+        .filters select, .filters input { padding: 0.35rem 0.5rem; background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 6px; color: var(--text-primary); font-family: inherit; font-size: 0.8rem; }
+        .tabs { display: flex; gap: 0.5rem; margin-bottom: 1rem; flex-wrap: wrap; }
+        .tab { padding: 0.5rem 1rem; background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 0.85rem; }
+        .tab.active { background: var(--accent-blue); border-color: var(--accent-blue); }
+        .highlight-row { background: rgba(239, 68, 68, 0.1) !important; }
+        .hidden { display: none; }
+        .progress { width: 100%; height: 6px; background: var(--bg-secondary); border-radius: 3px; overflow: hidden; margin: 0.5rem 0; }
+        .progress-bar { height: 100%; background: linear-gradient(90deg, var(--accent-blue), var(--accent-cyan)); transition: width 0.3s; }
+        .chip { display: inline-block; padding: 0.2rem 0.5rem; background: var(--bg-secondary); border-radius: 4px; font-size: 0.75rem; margin: 0.1rem; }
+        .chip-remove { cursor: pointer; margin-right: 0.3rem; color: var(--accent-red); }
+        .settings-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 0.75rem; }
+        .setting-item { display: flex; flex-direction: column; gap: 0.2rem; }
+        .setting-item label { font-size: 0.75rem; color: var(--text-secondary); }
+        .setting-item input, .setting-item select { padding: 0.35rem; background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 6px; color: var(--text-primary); font-size: 0.85rem; }
+        .collapsible { cursor: pointer; }
+        .collapsible-content { max-height: 0; overflow: hidden; transition: max-height 0.3s; }
+        .collapsible-content.open { max-height: 2000px; }
+        .date-chips { display: flex; flex-wrap: wrap; gap: 0.3rem; margin-top: 0.5rem; min-height: 30px; padding: 0.5rem; background: var(--bg-secondary); border-radius: 6px; }
+        .logic-box { background: var(--bg-secondary); border-radius: 8px; padding: 0.75rem; margin-top: 0.5rem; font-size: 0.75rem; }
+        .logic-box code { background: rgba(59, 130, 246, 0.2); padding: 0.1rem 0.3rem; border-radius: 3px; }
+        .guide-section h4 { color: var(--accent-cyan); }
+        .guide-section table { border-collapse: collapse; }
+        .guide-section td, .guide-section th { padding: 0.5rem; border-bottom: 1px solid var(--border-color); text-align: right; }
+        .guide-section ul { list-style-type: disc; }
+        
+        /* Modal styles */
+        .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); display: flex; align-items: center; justify-content: center; z-index: 1000; }
+        .modal { background: var(--bg-card); border-radius: 16px; border: 1px solid var(--border-color); max-width: 900px; width: 95%; max-height: 90vh; overflow-y: auto; }
+        .modal-header { padding: 1rem 1.5rem; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; background: var(--bg-card); z-index: 10; }
+        .modal-header h2 { font-size: 1.2rem; }
+        .modal-close { background: none; border: none; color: var(--text-secondary); font-size: 1.5rem; cursor: pointer; }
+        .modal-close:hover { color: var(--accent-red); }
+        .modal-body { padding: 1.5rem; }
+        .duty-timeline { margin: 1rem 0; }
+        .timeline-item { display: flex; align-items: stretch; margin-bottom: 0.5rem; }
+        .timeline-time { width: 100px; text-align: left; font-size: 0.85rem; color: var(--text-secondary); padding-top: 0.5rem; }
+        .timeline-line { width: 30px; display: flex; flex-direction: column; align-items: center; }
+        .timeline-dot { width: 12px; height: 12px; border-radius: 50%; margin-top: 0.5rem; }
+        .timeline-dot.trip { background: var(--accent-blue); }
+        .timeline-dot.break { background: var(--accent-green); }
+        .timeline-dot.deadhead { background: var(--accent-yellow); }
+        .timeline-connector { flex: 1; width: 2px; background: var(--border-color); margin: 2px 0; }
+        .timeline-content { flex: 1; background: var(--bg-secondary); border-radius: 8px; padding: 0.75rem; margin-right: 0.5rem; }
+        .timeline-content.break { border-right: 3px solid var(--accent-green); }
+        .timeline-content.trip { border-right: 3px solid var(--accent-blue); }
+        .timeline-content.deadhead { border-right: 3px solid var(--accent-yellow); }
+        .segment-box { background: var(--bg-secondary); border-radius: 10px; padding: 1rem; margin: 1rem 0; }
+        .segment-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border-color); }
+        .segment-ok { border-right: 4px solid var(--accent-green); }
+        .segment-fail { border-right: 4px solid var(--accent-red); }
+        .segment-detail { font-size: 0.85rem; margin: 0.3rem 0; }
+        .comparison-table { width: 100%; margin-top: 1rem; }
+        .comparison-table th { background: var(--bg-primary); }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1>🚌 כלי ניתוח מפות תנועה</h1>
+            <p style="color: var(--text-secondary); font-size: 0.85rem;">אחוזון דינמי • חיזוי אי-ביצוע ואי-דיוק • בדיקת תקנה 168</p>
+            <button class="btn btn-secondary" onclick="showGuide()" style="margin-top: 0.5rem;">📖 מדריך למשתמש</button>
+        </header>
+
+        <!-- Upload Section -->
+        <div class="grid-2">
+            <div class="section">
+                <div class="section-title">📂 קבצי ביצוע (Actuals)</div>
+                <div class="upload-zone" id="actualsZone" onclick="document.getElementById('actualsInput').click()">
+                    <input type="file" id="actualsInput" multiple accept=".csv,.zip">
+                    <div>📁 גרור קבצי CSV או לחץ לבחירה</div>
+                </div>
+                <div id="actualsFiles" style="margin-top: 0.5rem;"></div>
+            </div>
+            <div class="section">
+                <div class="section-title">🗺️ מפת תנועה (Service Map)</div>
+                <div class="upload-zone" id="mapZone" onclick="document.getElementById('mapInput').click()">
+                    <input type="file" id="mapInput" accept=".csv">
+                    <div>📁 גרור קובץ CSV או לחץ לבחירה</div>
+                </div>
+                <div id="mapFile" style="margin-top: 0.5rem;"></div>
+            </div>
+        </div>
+
+        <!-- Settings Section -->
+        <div class="section">
+            <div class="section-title collapsible" onclick="toggleCollapsible('settingsContent')">⚙️ הגדרות <span style="font-size: 0.75rem; color: var(--text-secondary);">(לחץ להרחבה)</span></div>
+            <div id="settingsContent" class="collapsible-content open">
+                <div class="settings-grid">
+                    <div class="setting-item">
+                        <label>שם מפעיל / אשכול (אופציונלי)</label>
+                        <input type="text" id="operatorName" value="" placeholder="למשל: קווים 123">
+                    </div>
+                    <div class="setting-item">
+                        <label>יעד אי-ביצוע מקסימלי (%)</label>
+                        <input type="number" id="targetNE" value="2" min="0" max="100" step="0.5">
+                    </div>
+                    <div class="setting-item">
+                        <label>יעד אי-דיוק מקסימלי (%)</label>
+                        <input type="number" id="targetIN" value="3" min="0" max="100" step="0.5">
+                    </div>
+                    <div class="setting-item">
+                        <label>סף אי-ביצוע (דקות)</label>
+                        <input type="number" id="threshNE" value="20" min="1" max="60">
+                    </div>
+                    <div class="setting-item">
+                        <label>סף אי-דיוק (דקות)</label>
+                        <input type="number" id="threshIN" value="5" min="1" max="30">
+                    </div>
+                    <div class="setting-item">
+                        <label>קווים להתעלם (בעיית GPS)</label>
+                        <input type="text" id="ignoreRoutes" value="" placeholder="למשל: 2,5">
+                    </div>
+                    <div class="setting-item">
+                        <label>קווים עם זנב כבד (P95)</label>
+                        <input type="text" id="heavyTailRoutes" value="" placeholder="למשל: 8,10">
+                    </div>
+                </div>
+                
+                <div style="margin-top: 1rem;">
+                    <label style="font-size: 0.85rem; font-weight: 600;">📅 החרגת תאריכים:</label>
+                    <div style="display: flex; gap: 0.5rem; margin-top: 0.5rem; flex-wrap: wrap;">
+                        <input type="date" id="excludeDateInput" style="padding: 0.35rem; background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 6px; color: var(--text-primary);">
+                        <button class="btn btn-secondary btn-sm" onclick="addExcludeDate()">➕ הוסף</button>
+                        <button class="btn btn-warning btn-sm" onclick="addIsraeliHolidays2024()">🕎 2024</button>
+                        <button class="btn btn-warning btn-sm" onclick="addIsraeliHolidays2025()">🕎 2025</button>
+                        <button class="btn btn-warning btn-sm" onclick="addIsraeliHolidays2026()">🕎 2026</button>
+                        <button class="btn btn-secondary btn-sm" onclick="clearExcludeDates()">🗑️ נקה</button>
+                    </div>
+                    <div class="date-chips" id="excludeDateChips"></div>
+                </div>
+                
+                <div style="margin-top: 0.75rem;">
+                    <label><input type="checkbox" id="excludeWeekends" checked> החרג שישי-שבת</label>
+                </div>
+                
+                <div class="logic-box">
+                    <strong>📐 לוגיקת אחוזון דינמית:</strong><br>
+                    <span style="color: var(--accent-purple);">קווים בעייתיים:</span> קווים עם GPS לקוי (להתעלם) או זנב כבד → <code>P95</code><br>
+                    <span style="color: var(--accent-cyan);">לפי שעה:</span> 
+                    שיא בוקר (06-09) → <code>P90</code> | 
+                    שפל יום (09-15) → <code>P85</code> | 
+                    שיא ערב (15-19) → <code>P90</code> | 
+                    שפל ערב (19-06) → <code>P80</code>
+                </div>
+            </div>
+        </div>
+
+        <!-- Analyze Button -->
+        <div style="text-align: center; margin: 1rem 0;">
+            <button class="btn btn-primary" onclick="analyze()" id="analyzeBtn" disabled style="font-size: 1.1rem; padding: 0.8rem 2rem;">
+                🔍 נתח נתונים
+            </button>
+        </div>
+        <div class="progress hidden" id="progressBar"><div class="progress-bar" style="width: 0%"></div></div>
+
+        <!-- Results Section -->
+        <div id="results" class="hidden">
+            <div class="stats-grid" id="summaryStats"></div>
+
+            <div class="info-box">
+                <strong>📌 הגדרות:</strong>
+                • <span style="color: var(--accent-red);">אי-ביצוע</span>: ≥<span id="infoNE">20</span> דק' |
+                • <span style="color: var(--accent-yellow);">אי-דיוק</span>: <span id="infoIN">5</span>-<span id="infoNE2">20</span> דק' |
+                • <span style="color: var(--accent-purple);">תקנה 168</span>: הפסקה ≥30' או 2×15' לכל 4 שעות
+            </div>
+
+            <div class="tabs">
+                <div class="tab active" onclick="showTab('trips')">📋 נסיעות</div>
+                <div class="tab" onclick="showTab('duties')">👤 סידורים (168)</div>
+                <div class="tab" onclick="showTab('routes')">🚌 קווים</div>
+            </div>
+
+            <!-- Trips Tab -->
+            <div id="tripsTab" class="section">
+                <div class="filters">
+                    <select id="filterRoute"><option value="">כל הקווים</option></select>
+                    <select id="filterStatus">
+                        <option value="">כל הסטטוסים</option>
+                        <option value="fail_ne">חורג NE</option>
+                        <option value="fail_in">חורג IN</option>
+                        <option value="ok">תקין</option>
+                        <option value="no_data">אין נתונים</option>
+                    </select>
+                    <select id="filterRec">
+                        <option value="">כל ההמלצות</option>
+                        <option value="להעלות">להעלות</option>
+                        <option value="לבחון העלאה">לבחון העלאה</option>
+                        <option value="לשמור">לשמור</option>
+                    </select>
+                    <select id="filter168">
+                        <option value="">168 - הכל</option>
+                        <option value="plan_fail">תכנון ✗</option>
+                        <option value="actual_fail">אחוזון ✗</option>
+                    </select>
+                    <button class="btn btn-secondary btn-sm" onclick="exportTripsCSV()">📥 CSV</button>
+                </div>
+                <div class="table-wrapper">
+                    <table>
+                        <thead><tr>
+                            <th onclick="sortTrips('duty_id')">סידור</th>
+                            <th onclick="sortTrips('route')">קו</th>
+                            <th onclick="sortTrips('direction')">כיוון</th>
+                            <th onclick="sortTrips('start_time')">יציאה</th>
+                            <th onclick="sortTrips('planned')">תכנון</th>
+                            <th onclick="sortTrips('dynamic_pct')">אחוזון</th>
+                            <th onclick="sortTrips('pct_value')">ערך</th>
+                            <th onclick="sortTrips('gap_to_next')">פער</th>
+                            <th onclick="sortTrips('prob_non_exec')" title="סיכון במצב נוכחי">NE נוכחי</th>
+                            <th onclick="sortTrips('prob_non_exec_rec')" title="סיכון אחרי אימוץ המלצה">NE אחרי</th>
+                            <th onclick="sortTrips('prob_inaccuracy')" title="סיכון במצב נוכחי">IN נוכחי</th>
+                            <th>סטטוס</th>
+                            <th>המלצה</th>
+                            <th onclick="sortTrips('rec_duration')">הגדרה</th>
+                            <th>168 תכנון</th>
+                            <th>168 אחוזון</th>
+                        </tr></thead>
+                        <tbody id="tripsBody"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Duties Tab -->
+            <div id="dutiesTab" class="section hidden">
+                <div class="filters">
+                    <select id="filterDuty168">
+                        <option value="">כל הסידורים</option>
+                        <option value="both_ok">תכנון ✓ + אחוזון ✓</option>
+                        <option value="plan_ok_actual_fail">תכנון ✓ אבל אחוזון ✗</option>
+                        <option value="plan_fail">תכנון ✗</option>
+                    </select>
+                    <button class="btn btn-secondary btn-sm" onclick="exportDutiesCSV()">📥 CSV</button>
+                </div>
+                <p style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 0.5rem;">💡 לחץ על שורה לפירוט מלא של הסידור</p>
+                <div class="table-wrapper">
+                    <table>
+                        <thead><tr>
+                            <th onclick="sortDuties('duty_id')">סידור</th>
+                            <th>התחלה</th>
+                            <th>סיום</th>
+                            <th onclick="sortDuties('total_duration')">משך</th>
+                            <th>מקטעים</th>
+                            <th onclick="sortDuties('plan_compliant')">168 תכנון</th>
+                            <th onclick="sortDuties('actual_compliant')">168 אחוזון</th>
+                            <th>מקטעים בעייתיים</th>
+                        </tr></thead>
+                        <tbody id="dutiesBody"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Routes Tab -->
+            <div id="routesTab" class="section hidden">
+                <div class="table-wrapper">
+                    <table>
+                        <thead><tr>
+                            <th onclick="sortRoutes('route')">קו</th>
+                            <th onclick="sortRoutes('trips')">נסיעות</th>
+                            <th>אחוזון</th>
+                            <th onclick="sortRoutes('avg_non_exec')">אי-ביצוע</th>
+                            <th onclick="sortRoutes('avg_inaccuracy')">אי-דיוק</th>
+                            <th onclick="sortRoutes('daily_non_exec')" title="נוכחי → אחרי המלצה">צפי NE/יום</th>
+                            <th onclick="sortRoutes('rec_increase')">להעלות</th>
+                        </tr></thead>
+                        <tbody id="routesBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal for Duty Details -->
+    <div id="dutyModal" class="modal-overlay hidden" style="display:none;" onclick="if(event.target===this)closeDutyModal()">
+        <div class="modal">
+            <div class="modal-header">
+                <h2 id="modalTitle">📋 פירוט סידור</h2>
+                <button class="modal-close" onclick="closeDutyModal()">&times;</button>
+            </div>
+            <div class="modal-body" id="modalBody"></div>
+        </div>
+    </div>
+
+    <!-- Modal for Guide -->
+    <div id="guideModal" class="modal-overlay hidden" style="display:none;" onclick="if(event.target===this)closeGuide()">
+        <div class="modal" style="max-width: 1000px;">
+            <div class="modal-header">
+                <h2>📖 מדריך למשתמש</h2>
+                <button class="modal-close" onclick="closeGuide()">&times;</button>
+            </div>
+            <div class="modal-body" style="font-size: 0.85rem;">
+                
+                <div style="display: flex; gap: 0.5rem; margin-bottom: 1rem; flex-wrap: wrap;">
+                    <button class="btn btn-primary btn-sm" onclick="showGuideSection('rule168')">📜 תקנה 168</button>
+                    <button class="btn btn-secondary btn-sm" onclick="showGuideSection('trips')">📋 לשונית נסיעות</button>
+                    <button class="btn btn-secondary btn-sm" onclick="showGuideSection('duties')">👤 לשונית סידורים</button>
+                    <button class="btn btn-secondary btn-sm" onclick="showGuideSection('routes')">🚌 לשונית קווים</button>
+                    <button class="btn btn-secondary btn-sm" onclick="showGuideSection('percentile')">📐 אחוזון דינמי</button>
+                </div>
+
+                <div id="guideContent">
+                    <!-- Rule 168 Section -->
+                    <div id="guide-rule168" class="guide-section">
+                        <h3 style="color: var(--accent-purple); margin-bottom: 1rem;">📜 תקנה 168 לתקנות התעבורה</h3>
+                        
+                        <div style="background: var(--bg-secondary); padding: 1rem; border-radius: 8px; margin-bottom: 1rem;">
+                            <h4 style="margin-bottom: 0.5rem;">🎯 מטרת התקנה</h4>
+                            <p>למנוע עייפות של נהגי תחבורה ציבורית ורכב כבד, על ידי חיוב הפסקות מנוחה.</p>
+                        </div>
+
+                        <div style="background: var(--bg-secondary); padding: 1rem; border-radius: 8px; margin-bottom: 1rem;">
+                            <h4 style="margin-bottom: 0.5rem;">📋 דרישות התקנה (לפי פרשנות משפטית)</h4>
+                            <p><strong>לכל 4 שעות נהיגה רצופות</strong>, הנהג חייב לקבל אחד מאלה:</p>
+                            <ul style="margin: 0.5rem 1.5rem;">
+                                <li>הפסקה אחת של <strong>30 דקות לפחות</strong></li>
+                                <li><strong>או</strong> 2 הפסקות של <strong>15 דקות לפחות</strong> כל אחת (סה"כ 30 דקות)</li>
+                            </ul>
+                        </div>
+
+                        <div style="background: var(--bg-secondary); padding: 1rem; border-radius: 8px; margin-bottom: 1rem;">
+                            <h4 style="margin-bottom: 0.5rem;">🔄 קטיעת רצף נהיגה</h4>
+                            <p>הפסקה נוספת של <strong>15 דקות או יותר</strong> מעבר לדרישה <strong>קוטעת את רצף הנהיגה</strong> ומתחילה ספירה חדשה של 4 שעות.</p>
+                        </div>
+
+                        <div style="background: var(--bg-secondary); padding: 1rem; border-radius: 8px; margin-bottom: 1rem;">
+                            <h4 style="margin-bottom: 0.5rem;">☕ מה נחשב הפסקה?</h4>
+                            <ul style="margin: 0.5rem 1.5rem;">
+                                <li><strong>standby</strong> - המתנה</li>
+                                <li><strong>break</strong> - הפסקה</li>
+                                <li><strong>meal_break</strong> - הפסקת אוכל</li>
+                                <li><strong>split</strong> - פיצול (נחשב הפסקה!)</li>
+                            </ul>
+                        </div>
+
+                        <div style="background: rgba(168, 85, 247, 0.1); border: 1px solid var(--accent-purple); padding: 1rem; border-radius: 8px;">
+                            <h4 style="margin-bottom: 0.5rem;">📊 בדיקה כפולה בכלי</h4>
+                            <ul style="margin: 0.5rem 1.5rem;">
+                                <li><strong>168 תכנון</strong> - בדיקה לפי זמני סיום מתוכננים במפה</li>
+                                <li><strong>168 אחוזון</strong> - בדיקה לפי זמני סיום צפויים (אחוזון דינמי)</li>
+                            </ul>
+                            <p style="margin-top: 0.5rem; color: var(--accent-yellow);">⚠️ סידור יכול לעמוד בתכנון אבל לא באחוזון אם הנסיעות ארוכות מהמתוכנן!</p>
+                        </div>
+                    </div>
+
+                    <!-- Trips Section -->
+                    <div id="guide-trips" class="guide-section" style="display:none;">
+                        <h3 style="color: var(--accent-blue); margin-bottom: 1rem;">📋 לשונית נסיעות - הסבר עמודות</h3>
+                        
+                        <table style="width: 100%; font-size: 0.8rem;">
+                            <thead>
+                                <tr><th style="text-align: right; padding: 0.5rem;">עמודה</th><th style="text-align: right; padding: 0.5rem;">הסבר</th></tr>
+                            </thead>
+                            <tbody>
+                                <tr><td><strong>סידור</strong></td><td>מספר זיהוי הסידור (Duty ID) אליו שייכת הנסיעה</td></tr>
+                                <tr><td><strong>קו</strong></td><td>מספר הקו</td></tr>
+                                <tr><td><strong>כיוון</strong></td><td>כיוון הנסיעה (1 או 2)</td></tr>
+                                <tr><td><strong>יציאה</strong></td><td>שעת היציאה המתוכננת</td></tr>
+                                <tr><td><strong>תכנון</strong></td><td>משך הנסיעה המתוכנן בדקות (לפי המפה)</td></tr>
+                                <tr style="background: rgba(249, 115, 22, 0.1);"><td><strong>אחוזון</strong></td><td>סוג האחוזון שנבחר (P80/P85/P90/P95/GPS) לפי שעה וקו</td></tr>
+                                <tr style="background: rgba(249, 115, 22, 0.1);"><td><strong>ערך</strong></td><td>ערך האחוזון בדקות - המשך הצפוי של הנסיעה</td></tr>
+                                <tr><td><strong>פער</strong></td><td>זמן עד הנסיעה הבאה בסידור (בדקות). "אחרון" = נסיעה אחרונה בסידור</td></tr>
+                                <tr style="background: rgba(239, 68, 68, 0.1);"><td><strong>אי-ביצוע</strong></td><td>הסתברות שהנסיעה הבאה לא תתבצע (איחור מעל 20 דקות)</td></tr>
+                                <tr style="background: rgba(234, 179, 8, 0.1);"><td><strong>אי-דיוק</strong></td><td>הסתברות לאי-דיוק (איחור 5-20 דקות)</td></tr>
+                                <tr><td><strong>סטטוס</strong></td><td>✓ תקין | NE חורג אי-ביצוע | IN חורג אי-דיוק | GPS להתעלם</td></tr>
+                                <tr><td><strong>המלצה</strong></td><td>"להעלות" / "לבחון העלאה" / "לשמור" - המלצה להגדרת זמן הנסיעה</td></tr>
+                                <tr><td><strong>הגדרה</strong></td><td>הזמן המומלץ להגדרה (בדקות)</td></tr>
+                                <tr><td><strong>168 תכנון</strong></td><td>האם הסידור עומד בתקנה 168 לפי זמנים מתוכננים</td></tr>
+                                <tr><td><strong>168 אחוזון</strong></td><td>האם הסידור עומד בתקנה 168 לפי זמנים צפויים</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Duties Section -->
+                    <div id="guide-duties" class="guide-section" style="display:none;">
+                        <h3 style="color: var(--accent-cyan); margin-bottom: 1rem;">👤 לשונית סידורים (168) - הסבר עמודות</h3>
+                        
+                        <table style="width: 100%; font-size: 0.8rem;">
+                            <thead>
+                                <tr><th style="text-align: right; padding: 0.5rem;">עמודה</th><th style="text-align: right; padding: 0.5rem;">הסבר</th></tr>
+                            </thead>
+                            <tbody>
+                                <tr><td><strong>סידור</strong></td><td>מספר זיהוי הסידור (Duty ID)</td></tr>
+                                <tr><td><strong>התחלה</strong></td><td>שעת תחילת הסידור</td></tr>
+                                <tr><td><strong>סיום</strong></td><td>שעת סיום הסידור</td></tr>
+                                <tr><td><strong>משך</strong></td><td>משך הסידור הכולל בשעות</td></tr>
+                                <tr><td><strong>מקטעים</strong></td><td>חלוקת הסידור למקטעים של 4 שעות. ירוק=תקין, אדום=בעייתי</td></tr>
+                                <tr style="background: rgba(168, 85, 247, 0.1);"><td><strong>168 תכנון</strong></td><td>✓ עומד בתקנה לפי זמנים מתוכננים | ✗ לא עומד</td></tr>
+                                <tr style="background: rgba(239, 68, 68, 0.1);"><td><strong>168 אחוזון</strong></td><td>✓ עומד בתקנה לפי זמנים צפויים | ✗ לא עומד</td></tr>
+                                <tr><td><strong>מקטעים בעייתיים</strong></td><td>מספרי המקטעים שלא עומדים בדרישות</td></tr>
+                            </tbody>
+                        </table>
+
+                        <div style="background: var(--bg-secondary); padding: 1rem; border-radius: 8px; margin-top: 1rem;">
+                            <h4 style="margin-bottom: 0.5rem;">💡 לחיצה על שורה</h4>
+                            <p>לחיצה על שורה בטבלה תפתח פירוט מלא של הסידור:</p>
+                            <ul style="margin: 0.5rem 1.5rem;">
+                                <li>רשימת כל האירועים (נסיעות, הפסקות, ריקות)</li>
+                                <li>פירוט מקטעים עם סטטוס תכנון ואחוזון</li>
+                                <li>פירוט ההפסקות בכל מקטע</li>
+                            </ul>
+                        </div>
+
+                        <div style="background: var(--bg-secondary); padding: 1rem; border-radius: 8px; margin-top: 1rem;">
+                            <h4 style="margin-bottom: 0.5rem;">🔍 פילטרים</h4>
+                            <ul style="margin: 0.5rem 1.5rem;">
+                                <li><strong>תכנון ✓ + אחוזון ✓</strong> - סידורים תקינים לחלוטין</li>
+                                <li><strong>תכנון ✓ אבל אחוזון ✗</strong> - סידורים שעלולים להיות בעייתיים בפועל</li>
+                                <li><strong>תכנון ✗</strong> - סידורים בעייתיים כבר בתכנון</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <!-- Routes Section -->
+                    <div id="guide-routes" class="guide-section" style="display:none;">
+                        <h3 style="color: var(--accent-green); margin-bottom: 1rem;">🚌 לשונית קווים - הסבר עמודות</h3>
+                        
+                        <table style="width: 100%; font-size: 0.8rem;">
+                            <thead>
+                                <tr><th style="text-align: right; padding: 0.5rem;">עמודה</th><th style="text-align: right; padding: 0.5rem;">הסבר</th></tr>
+                            </thead>
+                            <tbody>
+                                <tr><td><strong>קו</strong></td><td>מספר הקו</td></tr>
+                                <tr><td><strong>נסיעות</strong></td><td>מספר הנסיעות שנותחו (לא כולל נסיעות אחרונות בסידור)</td></tr>
+                                <tr><td><strong>אחוזון</strong></td><td>סוג האחוזון הרלוונטי לקו (P80-P95 או GPS)</td></tr>
+                                <tr style="background: rgba(239, 68, 68, 0.1);"><td><strong>אי-ביצוע</strong></td><td>ממוצע הסתברות לאי-ביצוע בקו (%)</td></tr>
+                                <tr style="background: rgba(234, 179, 8, 0.1);"><td><strong>אי-דיוק</strong></td><td>ממוצע הסתברות לאי-דיוק בקו (%)</td></tr>
+                                <tr><td><strong>צפי/יום</strong></td><td>מספר מקרי אי-ביצוע צפויים ביום</td></tr>
+                                <tr><td><strong>להעלות</strong></td><td>מספר נסיעות שמומלץ להעלות את זמנן</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Percentile Section -->
+                    <div id="guide-percentile" class="guide-section" style="display:none;">
+                        <h3 style="color: var(--accent-orange); margin-bottom: 1rem;">📐 אחוזון דינמי - הסבר</h3>
+                        
+                        <div style="background: var(--bg-secondary); padding: 1rem; border-radius: 8px; margin-bottom: 1rem;">
+                            <h4 style="margin-bottom: 0.5rem;">🎯 מהו אחוזון?</h4>
+                            <p>אחוזון מייצג את הזמן שבו X% מהנסיעות הסתיימו. לדוגמה:</p>
+                            <ul style="margin: 0.5rem 1.5rem;">
+                                <li><strong>P80 = 45 דקות</strong> → 80% מהנסיעות הסתיימו תוך 45 דקות</li>
+                                <li><strong>P90 = 52 דקות</strong> → 90% מהנסיעות הסתיימו תוך 52 דקות</li>
+                            </ul>
+                        </div>
+
+                        <div style="background: var(--bg-secondary); padding: 1rem; border-radius: 8px; margin-bottom: 1rem;">
+                            <h4 style="margin-bottom: 0.5rem;">⚙️ בחירת אחוזון דינמית</h4>
+                            <p>הכלי בוחר אחוזון שונה לפי שעה וסוג קו:</p>
+                            <table style="width: 100%; margin-top: 0.5rem; font-size: 0.8rem;">
+                                <tr><td><strong>קווים בעייתיים (GPS)</strong></td><td>להתעלם - משתמשים בזמן מתוכנן</td></tr>
+                                <tr><td><strong>קווים עם זנב כבד</strong></td><td style="color: var(--accent-orange);"><strong>P95</strong> - שונות גבוהה</td></tr>
+                                <tr><td><strong>שיא בוקר (06:00-09:00)</strong></td><td style="color: var(--accent-blue);"><strong>P90</strong></td></tr>
+                                <tr><td><strong>שפל יום (09:00-15:00)</strong></td><td style="color: var(--accent-green);"><strong>P85</strong></td></tr>
+                                <tr><td><strong>שיא ערב (15:00-19:00)</strong></td><td style="color: var(--accent-blue);"><strong>P90</strong></td></tr>
+                                <tr><td><strong>שפל ערב (19:00-06:00)</strong></td><td style="color: var(--accent-green);"><strong>P80</strong></td></tr>
+                            </table>
+                        </div>
+
+                        <div style="background: var(--bg-secondary); padding: 1rem; border-radius: 8px;">
+                            <h4 style="margin-bottom: 0.5rem;">📊 חישוב הסתברויות</h4>
+                            <p>הכלי משתמש במודל <strong>Log-Normal</strong> לחישוב הסתברויות:</p>
+                            <ul style="margin: 0.5rem 1.5rem;">
+                                <li><strong>אי-ביצוע</strong>: הסתברות שהנסיעה תארך יותר מ-(פער + 20 דקות)</li>
+                                <li><strong>אי-דיוק</strong>: הסתברות שהנסיעה תארך בין (פער + 5 דקות) ל-(פער + 20 דקות)</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer style="text-align: center; padding: 2rem 1rem; color: var(--text-secondary); font-size: 0.75rem; border-top: 1px solid var(--border-color); margin-top: 2rem;">
+        <p>כלי ניתוח מפות תנועה | גרסה 3.0</p>
+        <p>תקנה 168 • אחוזון דינמי • חיזוי אי-ביצוע ואי-דיוק</p>
+        <p style="margin-top: 0.5rem;">הכלי רץ לוקאלית בדפדפן - הנתונים לא נשלחים לשום שרת</p>
+    </footer>
+
+    <script>
+    const ISRAELI_HOLIDAYS_2024 = [
+        '2024-04-23','2024-04-24','2024-04-25','2024-04-26','2024-04-27','2024-04-28','2024-04-29',
+        '2024-05-14','2024-06-12','2024-10-03','2024-10-04','2024-10-12',
+        '2024-10-17','2024-10-18','2024-10-19','2024-10-20','2024-10-21','2024-10-22','2024-10-23','2024-10-24'
+    ];
+    const ISRAELI_HOLIDAYS_2025 = [
+        '2025-04-13','2025-04-14','2025-04-15','2025-04-16','2025-04-17','2025-04-18','2025-04-19',
+        '2025-05-01','2025-06-02','2025-09-23','2025-09-24','2025-10-02',
+        '2025-10-07','2025-10-08','2025-10-09','2025-10-10','2025-10-11','2025-10-12','2025-10-13','2025-10-14'
+    ];
+    const ISRAELI_HOLIDAYS_2026 = [
+        '2026-04-02','2026-04-03','2026-04-04','2026-04-05','2026-04-06','2026-04-07','2026-04-08',
+        '2026-04-22','2026-05-22','2026-09-12','2026-09-13','2026-09-21',
+        '2026-09-26','2026-09-27','2026-09-28','2026-09-29','2026-09-30','2026-10-01','2026-10-02','2026-10-03'
+    ];
+
+    let actualsData = [], mapData = [], tripsResults = [], dutiesResults = [], routesResults = [];
+    let dutiesRawEvents = {};
+    let excludeDates = new Set();
+    let tripsSortCol = 'prob_non_exec', tripsSortDir = 'desc';
+
+    document.getElementById('actualsInput').addEventListener('change', handleActualsUpload);
+    document.getElementById('mapInput').addEventListener('change', handleMapUpload);
+
+    async function handleActualsUpload(e) {
+        const files = e.target.files;
+        if (files.length > 0) {
+            document.getElementById('actualsZone').classList.add('has-files');
+            document.getElementById('actualsFiles').innerHTML = Array.from(files).map(f => `<span class="chip">📄 ${f.name}</span>`).join('');
+            actualsData = [];
+            for (const file of files) {
+                const text = await file.text();
+                actualsData = actualsData.concat(parseCSV(text));
+            }
+            checkReadyToAnalyze();
+        }
+    }
+
+    function handleMapUpload(e) {
+        const file = e.target.files[0];
+        if (file) {
+            document.getElementById('mapZone').classList.add('has-files');
+            document.getElementById('mapFile').innerHTML = `<span class="chip">📄 ${file.name}</span>`;
+            const reader = new FileReader();
+            reader.onload = (ev) => { mapData = parseCSV(ev.target.result); checkReadyToAnalyze(); };
+            reader.readAsText(file);
+        }
+    }
+
+    function parseCSV(text) {
+        const lines = text.split('\n').filter(l => l.trim());
+        if (lines.length < 2) return [];
+        const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
+        return lines.slice(1).map(line => {
+            const values = line.split(',').map(v => v.trim().replace(/"/g, ''));
+            const row = {};
+            headers.forEach((h, i) => row[h] = values[i] || '');
+            return row;
+        });
+    }
+
+    function checkReadyToAnalyze() {
+        document.getElementById('analyzeBtn').disabled = !(actualsData.length > 0 && mapData.length > 0);
+    }
+
+    function addExcludeDate() {
+        const input = document.getElementById('excludeDateInput');
+        if (input.value) { excludeDates.add(input.value); renderExcludeDates(); input.value = ''; }
+    }
+    function addIsraeliHolidays2024() { ISRAELI_HOLIDAYS_2024.forEach(d => excludeDates.add(d)); renderExcludeDates(); }
+    function addIsraeliHolidays2025() { ISRAELI_HOLIDAYS_2025.forEach(d => excludeDates.add(d)); renderExcludeDates(); }
+    function addIsraeliHolidays2026() { ISRAELI_HOLIDAYS_2026.forEach(d => excludeDates.add(d)); renderExcludeDates(); }
+    function clearExcludeDates() { excludeDates.clear(); renderExcludeDates(); }
+    function removeExcludeDate(date) { excludeDates.delete(date); renderExcludeDates(); }
+    function renderExcludeDates() {
+        document.getElementById('excludeDateChips').innerHTML = [...excludeDates].sort().map(d => 
+            `<span class="chip"><span class="chip-remove" onclick="removeExcludeDate('${d}')">✕</span>${new Date(d).toLocaleDateString('he-IL')}</span>`
+        ).join('');
+    }
+
+    function toggleCollapsible(id) { document.getElementById(id).classList.toggle('open'); }
+    function showTab(tab) {
+        document.querySelectorAll('.tab').forEach((t, i) => t.classList.toggle('active', (tab==='trips'&&i===0)||(tab==='duties'&&i===1)||(tab==='routes'&&i===2)));
+        document.getElementById('tripsTab').classList.toggle('hidden', tab !== 'trips');
+        document.getElementById('dutiesTab').classList.toggle('hidden', tab !== 'duties');
+        document.getElementById('routesTab').classList.toggle('hidden', tab !== 'routes');
+    }
+
+    function timeToMinutes(t) { if (!t) return null; const p = t.toString().split(':'); return parseInt(p[0]) * 60 + parseInt(p[1]); }
+    function minutesToTime(m) { return `${Math.floor(m/60)%24}:${(m%60).toString().padStart(2,'0')}`; }
+    function parseDuration(d) { if (!d || d === '#') return null; const p = d.toString().split(':'); return p.length >= 2 ? parseInt(p[0])*60 + parseInt(p[1]) : null; }
+    
+    function isExcludedDate(dateStr) {
+        if (!dateStr) return true;
+        try {
+            const p = dateStr.split('/');
+            const date = new Date(parseInt(p[2]), parseInt(p[1])-1, parseInt(p[0]));
+            if (excludeDates.has(date.toISOString().split('T')[0])) return true;
+            if (document.getElementById('excludeWeekends').checked && (date.getDay()===5||date.getDay()===6)) return true;
+        } catch(e) { return true; }
+        return false;
+    }
+
+    function getDynamicPercentile(route, hour) {
+        const ignore = document.getElementById('ignoreRoutes').value.split(',').map(r => parseInt(r.trim())).filter(r => !isNaN(r));
+        const heavy = document.getElementById('heavyTailRoutes').value.split(',').map(r => parseInt(r.trim())).filter(r => !isNaN(r));
+        if (ignore.includes(route)) return { pct: 0, label: 'GPS', ignore: true };
+        if (heavy.includes(route)) return { pct: 95, label: 'P95', ignore: false };
+        if (hour >= 6 && hour < 9) return { pct: 90, label: 'P90', ignore: false };
+        if (hour >= 9 && hour < 15) return { pct: 85, label: 'P85', ignore: false };
+        if (hour >= 15 && hour < 19) return { pct: 90, label: 'P90', ignore: false };
+        return { pct: 80, label: 'P80', ignore: false };
+    }
+
+    function percentile(arr, p) {
+        const s = [...arr].sort((a,b) => a-b);
+        const i = (p/100) * (s.length-1);
+        const l = Math.floor(i);
+        return l+1 < s.length ? s[l]*(1-(i-l)) + s[l+1]*(i-l) : s[l];
+    }
+
+    function logNormalCDF(x, mu, sigma) {
+        if (x <= 0) return 0;
+        return 0.5 * (1 + erf((Math.log(x) - mu) / (sigma * Math.sqrt(2))));
+    }
+    function erf(x) {
+        const a1=0.254829592,a2=-0.284496736,a3=1.421413741,a4=-1.453152027,a5=1.061405429,p=0.3275911;
+        const sign = x<0?-1:1; x=Math.abs(x);
+        const t=1/(1+p*x);
+        return sign*(1-(((((a5*t+a4)*t)+a3)*t+a2)*t+a1)*t*Math.exp(-x*x));
+    }
+    function fitLogNormal(data) {
+        if (data.length < 5) return null;
+        const log = data.filter(d => d>0).map(d => Math.log(d));
+        const mu = log.reduce((a,b) => a+b, 0) / log.length;
+        const sigma = Math.sqrt(log.reduce((a,b) => a + (b-mu)**2, 0) / log.length);
+        return { mu, sigma };
+    }
+
+    function checkRule168(events, useActual, tripDurations) {
+        // Filter to actual work events (not sign_on/sign_off/depot operations)
+        // split counts as a break!
+        const breakTypes = ['standby', 'break', 'meal_break', 'split'];
+        const workEvents = events.filter(e => 
+            e.eventType === 'service_trip' || 
+            e.eventType === 'deadhead' || 
+            breakTypes.includes(e.eventType)
+        );
+        
+        const driving = workEvents.filter(e => e.eventType === 'service_trip' || e.eventType === 'deadhead');
+        if (driving.length === 0) return { compliant: true, segments: [], details: 'אין נהיגה' };
+        
+        // Calculate times for all events
+        const adjusted = workEvents.map(e => {
+            const start = timeToMinutes(e.startTime) + e.dayOffset * 1440;
+            let end = timeToMinutes(e.endTime) + e.dayOffset * 1440;
+            if (end < start) end += 1440;
+            
+            if (useActual && e.eventType === 'service_trip') {
+                const key = `${e.route}-${e.direction}-${e.startTime}`;
+                if (tripDurations[key]) end = start + tripDurations[key];
+            }
+            return { ...e, start, end };
+        }).sort((a, b) => a.start - b.start);
+        
+        // Get driving events sorted
+        const drivingAdj = adjusted.filter(e => e.eventType === 'service_trip' || e.eventType === 'deadhead');
+        const firstDriveStart = drivingAdj[0].start;
+        const lastEnd = Math.max(...drivingAdj.map(e => e.end));
+        
+        const totalDuration = lastEnd - firstDriveStart;
+        if (totalDuration < 240) return { compliant: true, segments: [], details: `< 4 שעות (${(totalDuration/60).toFixed(1)}h)` };
+        
+        // Build segments - each segment is max 4 hours, aligned to trip boundaries
+        const segments = [];
+        let segStart = firstDriveStart;
+        let segNum = 1;
+        
+        while (segStart < lastEnd && segNum <= 10) {
+            let theoreticalEnd = segStart + 240; // 4 hours
+            let segEnd = theoreticalEnd;
+            
+            // Find trip that crosses theoretical end
+            const crossingTrip = drivingAdj.find(t => t.start < theoreticalEnd && t.end > theoreticalEnd);
+            
+            // If a trip crosses the boundary, this segment ends at trip start
+            // and next segment starts from that trip start
+            let nextSegStart = theoreticalEnd;
+            if (crossingTrip && theoreticalEnd < lastEnd) {
+                // Segment includes time up to trip start only
+                // But for break calculation we check full 4 hours from segStart
+                nextSegStart = crossingTrip.start;
+            }
+            
+            const actualSegEnd = Math.min(segEnd, lastEnd);
+            
+            // Find breaks in this segment
+            const breaks = [];
+            adjusted.filter(e => breakTypes.includes(e.eventType)).forEach(e => {
+                if (e.end <= segStart || e.start >= actualSegEnd) return;
+                const overlapStart = Math.max(e.start, segStart);
+                const overlapEnd = Math.min(e.end, actualSegEnd);
+                const overlap = overlapEnd - overlapStart;
+                if (overlap > 0) breaks.push({ overlap, full: e.end - e.start, start: e.start, end: e.end });
+            });
+            
+            const totalBreak = breaks.reduce((a, b) => a + b.overlap, 0);
+            const breaks15 = breaks.filter(b => b.overlap >= 15).length;
+            const has30 = breaks.some(b => b.full >= 30);
+            
+            // Check compliance - New interpretation: 30' break OR 2 breaks of 15'+ (total 30')
+            let isOk = has30 || (breaks15 >= 2 && totalBreak >= 30);
+            // If segment is less than 3 hours, it's OK
+            const segDuration = actualSegEnd - segStart;
+            if (segDuration < 180) isOk = true;
+            
+            segments.push({
+                num: segNum,
+                isOk,
+                totalBreak,
+                breaks15,
+                has30,
+                breaks,
+                startTime: minutesToTime(segStart % 1440),
+                endTime: minutesToTime(actualSegEnd % 1440),
+                startMin: segStart,
+                endMin: actualSegEnd
+            });
+            
+            segStart = nextSegStart;
+            segNum++;
+        }
+        
+        const allOk = segments.every(s => s.isOk);
+        return {
+            compliant: allOk,
+            segments,
+            details: allOk ? '✓' : `מקטעים: ${segments.filter(s => !s.isOk).map(s => s.num).join(',')}`
+        };
+    }
+
+    async function analyze() {
+        const btn = document.getElementById('analyzeBtn');
+        const progress = document.getElementById('progressBar');
+        btn.disabled = true; btn.textContent = '⏳ מנתח...';
+        progress.classList.remove('hidden');
+        
+        const targetNE = parseFloat(document.getElementById('targetNE').value);
+        const targetIN = parseFloat(document.getElementById('targetIN').value);
+        const threshNE = parseInt(document.getElementById('threshNE').value);
+        const threshIN = parseInt(document.getElementById('threshIN').value);
+        
+        document.getElementById('infoNE').textContent = threshNE;
+        document.getElementById('infoNE2').textContent = threshNE;
+        document.getElementById('infoIN').textContent = threshIN;
+
+        await new Promise(r => setTimeout(r, 10));
+        progress.querySelector('.progress-bar').style.width = '10%';
+
+        const filtered = actualsData.filter(row => !isExcludedDate(row.TripSourceDate));
+        const actualsMap = { short: {}, long: {} };
+        
+        for (const row of filtered) {
+            const route = parseInt(row.RouteShortName);
+            const dir = parseInt(row.Direction);
+            const time = timeToMinutes(row.TripSourceTime);
+            const dur = parseDuration(row.Duration);
+            if (isNaN(route) || isNaN(dir) || time === null || dur === null || dur <= 0 || dur > 180) continue;
+            const bucket = Math.round(time / 10) * 10;
+            const key = `${route}-${dir}-${bucket}`;
+            const type = dur < 60 ? 'short' : 'long';
+            if (!actualsMap[type][key]) actualsMap[type][key] = [];
+            actualsMap[type][key].push(dur);
+        }
+
+        progress.querySelector('.progress-bar').style.width = '30%';
+
+        const duties = {};
+        for (const row of mapData) {
+            const dutyId = row['Duty id'];
+            if (!dutyId) continue;
+            if (!duties[dutyId]) duties[dutyId] = [];
+            duties[dutyId].push({
+                eventType: row['Event Type'],
+                route: parseInt(row['Sign']) || null,
+                direction: parseInt(row['Direction']) || null,
+                startTime: row['Start Time'],
+                endTime: row['End Time'],
+                dayOffset: parseInt(row['Day Offset']) || 0
+            });
+        }
+
+        progress.querySelector('.progress-bar').style.width = '50%';
+
+        tripsResults = [];
+        dutiesResults = [];
+        dutiesRawEvents = {};
+        
+        for (const [dutyId, events] of Object.entries(duties)) {
+            events.sort((a, b) => (timeToMinutes(a.startTime) + a.dayOffset*1440) - (timeToMinutes(b.startTime) + b.dayOffset*1440));
+            dutiesRawEvents[dutyId] = events;
+
+            const plan168 = checkRule168(events, false, {});
+            const tripDurations = {};
+            const serviceTrips = events.filter(e => e.eventType === 'service_trip');
+            
+            for (let i = 0; i < serviceTrips.length; i++) {
+                const trip = serviceTrips[i];
+                const startMin = timeToMinutes(trip.startTime) + trip.dayOffset * 1440;
+                let endMin = timeToMinutes(trip.endTime) + trip.dayOffset * 1440;
+                if (endMin < startMin) endMin += 1440;
+                const planned = endMin - startMin;
+                const hour = Math.floor((startMin % 1440) / 60);
+                
+                const nextTrip = serviceTrips[i + 1];
+                const isLast = !nextTrip;
+                let gapToNext = 0;
+                if (nextTrip) gapToNext = (timeToMinutes(nextTrip.startTime) + nextTrip.dayOffset * 1440) - startMin;
+                
+                const bucket = Math.round((startMin % 1440) / 10) * 10;
+                const key = `${trip.route}-${trip.direction}-${bucket}`;
+                let durs = planned < 50 ? (actualsMap.short[key] || []) : (actualsMap.long[key] || []);
+                if (durs.length < 10) durs = [...(actualsMap.short[key] || []), ...(actualsMap.long[key] || [])];
+                
+                const noData = durs.length < 10;
+                const dynPct = getDynamicPercentile(trip.route, hour);
+                const pctValue = noData ? planned : (dynPct.ignore ? planned : percentile(durs, dynPct.pct));
+                tripDurations[`${trip.route}-${trip.direction}-${trip.startTime}`] = pctValue;
+                
+                let probNE = null, probIN = null, probOT = null;
+                let probNE_rec = null, probIN_rec = null, probOT_rec = null;
+                let fit = null;
+                
+                if (!noData && !dynPct.ignore && gapToNext > 0) {
+                    fit = fitLogNormal(durs);
+                    if (fit) {
+                        probNE = (1 - logNormalCDF(gapToNext + threshNE, fit.mu, fit.sigma)) * 100;
+                        probIN = (logNormalCDF(gapToNext + threshNE, fit.mu, fit.sigma) - logNormalCDF(gapToNext + threshIN, fit.mu, fit.sigma)) * 100;
+                        probOT = logNormalCDF(gapToNext + threshIN, fit.mu, fit.sigma) * 100;
+                    }
+                } else if (dynPct.ignore) {
+                    probNE = 0; probIN = 0; probOT = 100;
+                }
+                
+                let rec = noData ? 'אין נתונים' : 'לשמור', recDur = planned;
+                if (!noData && !dynPct.ignore && gapToNext > 0 && probNE !== null) {
+                    if (probNE > targetNE) { rec = 'להעלות'; recDur = Math.ceil(pctValue); }
+                    else if (probIN > targetIN) { rec = 'לבחון העלאה'; recDur = Math.ceil(pctValue); }
+                }
+                
+                // Calculate probabilities after adopting recommendation
+                if (fit && recDur !== planned) {
+                    const newGap = gapToNext + (recDur - planned);
+                    probNE_rec = (1 - logNormalCDF(newGap + threshNE, fit.mu, fit.sigma)) * 100;
+                    probIN_rec = (logNormalCDF(newGap + threshNE, fit.mu, fit.sigma) - logNormalCDF(newGap + threshIN, fit.mu, fit.sigma)) * 100;
+                    probOT_rec = logNormalCDF(newGap + threshIN, fit.mu, fit.sigma) * 100;
+                } else {
+                    probNE_rec = probNE;
+                    probIN_rec = probIN;
+                    probOT_rec = probOT;
+                }
+                
+                tripsResults.push({
+                    duty_id: dutyId, route: trip.route, direction: trip.direction, start_time: trip.startTime, hour, planned,
+                    dynamic_pct: noData ? 'N/A' : dynPct.label, pct_value: pctValue, gap_to_next: gapToNext, is_last: isLast,
+                    prob_non_exec: probNE, prob_inaccuracy: probIN, prob_on_time: probOT,
+                    prob_non_exec_rec: probNE_rec, prob_inaccuracy_rec: probIN_rec, prob_on_time_rec: probOT_rec,
+                    rec, rec_duration: recDur, is_ignored: dynPct.ignore, no_data: noData
+                });
+            }
+            
+            const actual168 = checkRule168(events, true, tripDurations);
+            
+            const firstDrive = events.find(e => e.eventType === 'service_trip');
+            const lastEvent = events[events.length - 1];
+            let totalDur = 0;
+            if (firstDrive && lastEvent) {
+                const s = timeToMinutes(firstDrive.startTime) + firstDrive.dayOffset * 1440;
+                let e = timeToMinutes(lastEvent.endTime) + lastEvent.dayOffset * 1440;
+                if (e < s) e += 1440;
+                totalDur = e - s;
+            }
+            
+            dutiesResults.push({
+                duty_id: dutyId,
+                startTime: firstDrive?.startTime || '',
+                endTime: lastEvent?.endTime || '',
+                total_duration: totalDur,
+                plan_compliant: plan168.compliant,
+                plan_details: plan168.details,
+                plan_segments: plan168.segments,
+                actual_compliant: actual168.compliant,
+                actual_details: actual168.details,
+                actual_segments: actual168.segments,
+                tripDurations
+            });
+            
+            tripsResults.filter(t => t.duty_id === dutyId).forEach(t => {
+                t.duty_168_plan = plan168.compliant;
+                t.duty_168_actual = actual168.compliant;
+            });
+        }
+
+        progress.querySelector('.progress-bar').style.width = '80%';
+
+        routesResults = [];
+        const groups = {};
+        tripsResults.filter(t => !t.is_last && !t.no_data).forEach(t => {
+            if (!groups[t.route]) groups[t.route] = [];
+            groups[t.route].push(t);
+        });
+        for (const [route, trips] of Object.entries(groups)) {
+            const dynPct = getDynamicPercentile(parseInt(route), 12);
+            const validTrips = trips.filter(t => t.prob_non_exec !== null);
+            routesResults.push({
+                route: parseInt(route), trips: trips.length, pct_label: dynPct.ignore ? 'GPS' : dynPct.label,
+                avg_non_exec: validTrips.length > 0 ? validTrips.reduce((a,t) => a + (t.prob_non_exec || 0), 0) / validTrips.length : 0,
+                avg_inaccuracy: validTrips.length > 0 ? validTrips.reduce((a,t) => a + (t.prob_inaccuracy || 0), 0) / validTrips.length : 0,
+                daily_non_exec: validTrips.reduce((a,t) => a + (t.prob_non_exec || 0), 0) / 100,
+                daily_non_exec_rec: validTrips.reduce((a,t) => a + (t.prob_non_exec_rec || 0), 0) / 100,
+                rec_increase: trips.filter(t => t.rec === 'להעלות').length
+            });
+        }
+
+        progress.querySelector('.progress-bar').style.width = '100%';
+        renderSummary(); renderTrips(); renderDuties(); renderRoutes(); populateFilters();
+        document.getElementById('results').classList.remove('hidden');
+        progress.classList.add('hidden');
+        btn.disabled = false; btn.textContent = '🔍 נתח נתונים';
+    }
+
+    function renderSummary() {
+        const notLast = tripsResults.filter(t => !t.is_last);
+        const withData = notLast.filter(t => !t.no_data);
+        const noDataCount = tripsResults.filter(t => t.no_data).length;
+        const targetNE = parseFloat(document.getElementById('targetNE').value);
+        const targetIN = parseFloat(document.getElementById('targetIN').value);
+        
+        const totalTrips = withData.length;
+        
+        // Count trips exceeding thresholds (current)
+        const failsNE = withData.filter(t => t.prob_non_exec !== null && t.prob_non_exec > targetNE).length;
+        const failsIN = withData.filter(t => t.prob_non_exec !== null && t.prob_non_exec <= targetNE && t.prob_inaccuracy > targetIN).length;
+        
+        // Count trips exceeding thresholds (after recommendation)
+        const failsNE_rec = withData.filter(t => t.prob_non_exec_rec !== null && t.prob_non_exec_rec > targetNE).length;
+        const failsIN_rec = withData.filter(t => t.prob_non_exec_rec !== null && t.prob_non_exec_rec <= targetNE && t.prob_inaccuracy_rec > targetIN).length;
+        
+        // Percentages
+        const pctNE = totalTrips > 0 ? (failsNE / totalTrips) * 100 : 0;
+        const pctIN = totalTrips > 0 ? (failsIN / totalTrips) * 100 : 0;
+        const pctNE_rec = totalTrips > 0 ? (failsNE_rec / totalTrips) * 100 : 0;
+        const pctIN_rec = totalTrips > 0 ? (failsIN_rec / totalTrips) * 100 : 0;
+        
+        const d168PlanFail = dutiesResults.filter(d => !d.plan_compliant).length;
+        const d168ActualFail = dutiesResults.filter(d => !d.actual_compliant).length;
+        
+        document.getElementById('summaryStats').innerHTML = `
+            <div class="stat-card"><div class="value blue">${tripsResults.length}</div><div class="label">נסיעות</div></div>
+            <div class="stat-card">
+                <div class="value red">${pctNE.toFixed(2)}%</div>
+                <div class="label">אי-ביצוע (נוכחי)</div>
+                ${pctNE_rec < pctNE ? `<div style="font-size:0.7rem;color:var(--accent-green);">→ ${pctNE_rec.toFixed(2)}% אחרי המלצה</div>` : ''}
+                <div style="font-size:0.65rem;color:var(--text-secondary);">${failsNE} נסיעות חורגות</div>
+            </div>
+            <div class="stat-card">
+                <div class="value yellow">${pctIN.toFixed(2)}%</div>
+                <div class="label">אי-דיוק (נוכחי)</div>
+                ${pctIN_rec < pctIN ? `<div style="font-size:0.7rem;color:var(--accent-green);">→ ${pctIN_rec.toFixed(2)}% אחרי המלצה</div>` : ''}
+                <div style="font-size:0.65rem;color:var(--text-secondary);">${failsIN} נסיעות חורגות</div>
+            </div>
+            <div class="stat-card"><div class="value ${noDataCount>0?'purple':'green'}">${noDataCount}</div><div class="label">אין נתונים</div></div>
+            <div class="stat-card"><div class="value ${d168PlanFail>0?'purple':'green'}">${d168PlanFail}</div><div class="label">168 תכנון ✗</div></div>
+            <div class="stat-card"><div class="value ${d168ActualFail>0?'red':'green'}">${d168ActualFail}</div><div class="label">168 אחוזון ✗</div></div>
+        `;
+    }
+
+    function renderTrips() {
+        const targetNE = parseFloat(document.getElementById('targetNE').value);
+        const targetIN = parseFloat(document.getElementById('targetIN').value);
+        const routeF = document.getElementById('filterRoute').value;
+        const statusF = document.getElementById('filterStatus').value;
+        const recF = document.getElementById('filterRec').value;
+        const f168 = document.getElementById('filter168').value;
+        
+        let filtered = tripsResults.filter(t => {
+            if (routeF && t.route != routeF) return false;
+            if (recF && t.rec !== recF) return false;
+            if (statusF === 'fail_ne' && (t.no_data || t.prob_non_exec <= targetNE)) return false;
+            if (statusF === 'fail_in' && (t.no_data || t.prob_non_exec > targetNE || t.prob_inaccuracy <= targetIN)) return false;
+            if (statusF === 'ok' && (t.no_data || t.prob_non_exec > targetNE || t.prob_inaccuracy > targetIN)) return false;
+            if (statusF === 'no_data' && !t.no_data) return false;
+            if (f168 === 'plan_fail' && t.duty_168_plan) return false;
+            if (f168 === 'actual_fail' && t.duty_168_actual) return false;
+            return true;
+        });
+        
+        filtered.sort((a,b) => {
+            let av = a[tripsSortCol], bv = b[tripsSortCol];
+            if (av === null) av = -1;
+            if (bv === null) bv = -1;
+            if (typeof av === 'string') return tripsSortDir === 'asc' ? av.localeCompare(bv) : bv.localeCompare(av);
+            return tripsSortDir === 'asc' ? av - bv : bv - av;
+        });
+        
+        document.getElementById('tripsBody').innerHTML = filtered.slice(0, 500).map(t => {
+            const neOk = t.no_data || t.prob_non_exec === null || t.prob_non_exec <= targetNE;
+            const inOk = t.no_data || t.prob_inaccuracy === null || t.prob_inaccuracy <= targetIN;
+            let status;
+            if (t.no_data) status = '<span class="badge badge-gray">N/A</span>';
+            else if (t.is_ignored) status = '<span class="badge badge-gray">GPS</span>';
+            else if (!neOk) status = '<span class="badge badge-red">NE</span>';
+            else if (!inOk) status = '<span class="badge badge-yellow">IN</span>';
+            else status = '<span class="badge badge-green">✓</span>';
+            
+            const recClass = t.rec === 'להעלות' ? 'badge-red' : t.rec === 'לבחון העלאה' ? 'badge-yellow' : t.rec === 'אין נתונים' ? 'badge-gray' : 'badge-green';
+            const pctClass = t.dynamic_pct === 'N/A' ? 'badge-gray' : t.dynamic_pct === 'P95' ? 'badge-orange' : t.dynamic_pct === 'P90' ? 'badge-blue' : t.dynamic_pct === 'GPS' ? 'badge-gray' : 'badge-green';
+            
+            // Show separate columns for current and after-recommendation
+            const probNEText = t.prob_non_exec === null ? '-' : t.prob_non_exec.toFixed(1) + '%';
+            const probNERecText = t.prob_non_exec_rec === null ? '-' : t.prob_non_exec_rec.toFixed(1) + '%';
+            const probINText = t.prob_inaccuracy === null ? '-' : t.prob_inaccuracy.toFixed(1) + '%';
+            
+            const neRecImproved = t.prob_non_exec_rec !== null && t.prob_non_exec !== null && t.prob_non_exec_rec < t.prob_non_exec;
+            
+            return `<tr class="${!t.no_data && t.prob_non_exec > 5 ? 'highlight-row' : ''}">
+                <td>${t.duty_id}</td><td><strong>${t.route}</strong></td><td>${t.direction}</td><td>${t.start_time}</td><td>${t.planned}</td>
+                <td><span class="badge ${pctClass}">${t.dynamic_pct}</span></td><td><strong>${t.pct_value.toFixed(0)}</strong></td>
+                <td>${t.is_last ? '<span class="badge badge-blue">אחרון</span>' : t.gap_to_next}</td>
+                <td style="color:${!neOk && !t.no_data?'var(--accent-red)':''}">${probNEText}</td>
+                <td style="color:${neRecImproved?'var(--accent-green)':''}">${probNERecText}</td>
+                <td style="color:${!inOk && !t.no_data?'var(--accent-yellow)':''}">${probINText}</td>
+                <td>${status}</td><td><span class="badge ${recClass}">${t.rec}</span></td><td><strong>${t.rec_duration}'</strong></td>
+                <td>${t.duty_168_plan?'<span class="badge badge-green">✓</span>':'<span class="badge badge-purple">✗</span>'}</td>
+                <td>${t.duty_168_actual?'<span class="badge badge-green">✓</span>':'<span class="badge badge-red">✗</span>'}</td>
+            </tr>`;
+        }).join('');
+    }
+
+    function renderDuties() {
+        const f168 = document.getElementById('filterDuty168').value;
+        let filtered = dutiesResults.filter(d => {
+            if (f168 === 'both_ok' && (!d.plan_compliant || !d.actual_compliant)) return false;
+            if (f168 === 'plan_ok_actual_fail' && (!d.plan_compliant || d.actual_compliant)) return false;
+            if (f168 === 'plan_fail' && d.plan_compliant) return false;
+            return true;
+        });
+        
+        document.getElementById('dutiesBody').innerHTML = filtered.map(d => {
+            const planBadge = d.plan_compliant ? '<span class="badge badge-green">✓</span>' : '<span class="badge badge-purple">✗</span>';
+            const actualBadge = d.actual_compliant ? '<span class="badge badge-green">✓</span>' : '<span class="badge badge-red">✗</span>';
+            const segsHtml = d.plan_segments.map(s => `<span class="badge ${s.isOk?'badge-green':'badge-red'}">${s.num}</span>`).join(' ');
+            const failedSegs = [...new Set([...d.plan_segments.filter(s=>!s.isOk).map(s=>s.num), ...d.actual_segments.filter(s=>!s.isOk).map(s=>s.num)])];
+            const failedText = failedSegs.length > 0 ? failedSegs.join(', ') : '-';
+            return `<tr class="clickable" onclick="showDutyDetails('${d.duty_id}')">
+                <td><strong>${d.duty_id}</strong></td><td>${d.startTime}</td><td>${d.endTime}</td>
+                <td>${(d.total_duration/60).toFixed(1)}h</td><td>${segsHtml||'-'}</td>
+                <td>${planBadge}</td><td>${actualBadge}</td><td>${failedText}</td>
+            </tr>`;
+        }).join('');
+    }
+
+    function renderRoutes() {
+        document.getElementById('routesBody').innerHTML = routesResults.sort((a,b) => b.avg_non_exec - a.avg_non_exec).map(r => {
+            const neColor = r.avg_non_exec > 5 ? 'var(--accent-red)' : r.avg_non_exec > 2 ? 'var(--accent-yellow)' : 'var(--accent-green)';
+            const pctClass = r.pct_label === 'P95' ? 'badge-orange' : r.pct_label === 'GPS' ? 'badge-gray' : 'badge-blue';
+            const improved = r.daily_non_exec_rec < r.daily_non_exec;
+            const dailyText = improved ? 
+                `${r.daily_non_exec.toFixed(1)}<span style="color:var(--accent-green);font-size:0.8rem;"> →${r.daily_non_exec_rec.toFixed(1)}</span>` : 
+                r.daily_non_exec.toFixed(1);
+            return `<tr><td><strong>קו ${r.route}</strong></td><td>${r.trips}</td><td><span class="badge ${pctClass}">${r.pct_label}</span></td>
+                <td style="color:${neColor}">${r.avg_non_exec.toFixed(2)}%</td><td>${r.avg_inaccuracy.toFixed(2)}%</td>
+                <td>${dailyText}</td><td>${r.rec_increase}</td></tr>`;
+        }).join('');
+    }
+
+    function populateFilters() {
+        const routeSelect = document.getElementById('filterRoute');
+        const routes = [...new Set(tripsResults.map(t => t.route))].sort((a,b) => a-b);
+        routeSelect.innerHTML = '<option value="">כל הקווים</option>' + routes.map(r => `<option value="${r}">קו ${r}</option>`).join('');
+    }
+
+    function sortTrips(col) {
+        if (tripsSortCol === col) tripsSortDir = tripsSortDir === 'asc' ? 'desc' : 'asc';
+        else { tripsSortCol = col; tripsSortDir = 'desc'; }
+        renderTrips();
+    }
+
+    function showDutyDetails(dutyId) {
+        if (!dutyId) return;
+        const duty = dutiesResults.find(d => d.duty_id == dutyId);
+        const events = dutiesRawEvents[dutyId];
+        if (!duty || !events || events.length === 0) {
+            alert('לא נמצאו נתונים לסידור זה');
+            return;
+        }
+        
+        document.getElementById('modalTitle').textContent = `📋 סידור ${dutyId}`;
+        
+        let html = `
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+                <div class="stat-card"><div class="value">${duty.startTime} - ${duty.endTime}</div><div class="label">שעות</div></div>
+                <div class="stat-card"><div class="value">${(duty.total_duration/60).toFixed(1)}h</div><div class="label">משך</div></div>
+            </div>
+            
+            <h3 style="margin: 1rem 0 0.5rem;">📅 אירועים בסידור:</h3>
+            <div class="duty-timeline">
+        `;
+        
+        for (const e of events) {
+            const start = timeToMinutes(e.startTime) + e.dayOffset * 1440;
+            let end = timeToMinutes(e.endTime) + e.dayOffset * 1440;
+            if (end < start) end += 1440;
+            const dur = end - start;
+            
+            // Determine type and display
+            let typeClass = 'trip', icon = '📋', label = e.eventType;
+            if (e.eventType === 'service_trip') { typeClass = 'trip'; icon = '🚌'; label = `קו ${e.route}`; }
+            else if (e.eventType === 'deadhead') { typeClass = 'deadhead'; icon = '🚗'; label = 'ריקה'; }
+            else if (e.eventType === 'standby' || e.eventType === 'break' || e.eventType === 'meal_break' || e.eventType === 'split') { typeClass = 'break'; icon = '☕'; label = e.eventType === 'split' ? 'פיצול' : 'הפסקה'; }
+            else if (e.eventType === 'sign_on') { typeClass = 'break'; icon = '🟢'; label = 'התחלה'; }
+            else if (e.eventType === 'sign_off') { typeClass = 'break'; icon = '🔴'; label = 'סיום'; }
+            else { typeClass = 'deadhead'; icon = '📋'; label = e.eventType; }
+            
+            // Get actual duration if available
+            let actualDur = dur;
+            if (e.eventType === 'service_trip' && duty.tripDurations) {
+                const key = `${e.route}-${e.direction}-${e.startTime}`;
+                if (duty.tripDurations[key]) actualDur = duty.tripDurations[key];
+            }
+            
+            html += `
+                <div class="timeline-item">
+                    <div class="timeline-time">${e.startTime}-${e.endTime}</div>
+                    <div class="timeline-line"><div class="timeline-dot ${typeClass}"></div><div class="timeline-connector"></div></div>
+                    <div class="timeline-content ${typeClass}">
+                        <strong>${icon} ${label}</strong>
+                        <div style="font-size: 0.8rem; color: var(--text-secondary);">
+                            תכנון: ${dur}' ${e.eventType === 'service_trip' && actualDur !== dur ? `| אחוזון: <strong>${actualDur.toFixed(0)}'</strong>` : ''}
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+        html += '</div>';
+        
+        // Segments analysis - recalculate to ensure accuracy
+        const plan168 = checkRule168(events, false, {});
+        const actual168 = checkRule168(events, true, duty.tripDurations || {});
+        
+        html += `<h3 style="margin: 1.5rem 0 0.5rem;">📊 ניתוח מקטעים (תקנה 168):</h3>`;
+        
+        if (plan168.segments.length === 0) {
+            html += `<div class="segment-box segment-ok"><div class="segment-header"><span>${plan168.details}</span><span>תכנון: <span class="badge badge-green">✓</span> אחוזון: <span class="badge badge-green">✓</span></span></div></div>`;
+        } else {
+            const maxSegs = Math.max(plan168.segments.length, actual168.segments.length);
+            for (let i = 0; i < maxSegs; i++) {
+                const planSeg = plan168.segments[i];
+                const actualSeg = actual168.segments[i];
+                const seg = planSeg || actualSeg;
+                if (!seg) continue;
+            
+            const planOk = planSeg?.isOk ?? true;
+            const actualOk = actualSeg?.isOk ?? true;
+            const segClass = !planOk || !actualOk ? 'segment-fail' : 'segment-ok';
+            
+            html += `
+                <div class="segment-box ${segClass}">
+                    <div class="segment-header">
+                        <span><strong>מקטע ${seg.num}</strong> | ${seg.startTime} - ${seg.endTime}</span>
+                        <span>
+                            תכנון: ${planOk ? '<span class="badge badge-green">✓</span>' : '<span class="badge badge-red">✗</span>'}
+                            אחוזון: ${actualOk ? '<span class="badge badge-green">✓</span>' : '<span class="badge badge-red">✗</span>'}
+                        </span>
+                    </div>
+                    <div class="segment-detail">
+                        ${planSeg ? `<div>📋 <strong>תכנון:</strong> ${planSeg.has30 ? '✅ הפסקה ≥30\'' : `${planSeg.breaks15} הפסקות ≥15' | סה"כ ${planSeg.totalBreak}'`}</div>` : ''}
+                        ${actualSeg && !actualOk ? `<div>📈 <strong>אחוזון:</strong> ${actualSeg.has30 ? '✅ הפסקה ≥30\'' : `${actualSeg.breaks15} הפסקות ≥15' | סה"כ ${actualSeg.totalBreak}'`}</div>` : ''}
+                    </div>
+                    ${!planOk || !actualOk ? `
+                        <div style="margin-top: 0.5rem; padding-top: 0.5rem; border-top: 1px solid var(--border-color); font-size: 0.8rem;">
+                            <strong>📌 דרישות:</strong> הפסקה ≥30' <strong>או</strong> 2 הפסקות ≥15' (סה"כ 30')
+                        </div>
+                    ` : ''}
+                </div>
+            `;
+            }
+        }
+        
+        document.getElementById('modalBody').innerHTML = html;
+        document.getElementById('dutyModal').style.display = 'flex';
+    }
+
+    function closeDutyModal() {
+        document.getElementById('dutyModal').style.display = 'none';
+    }
+
+    function showGuide() {
+        document.getElementById('guideModal').style.display = 'flex';
+        showGuideSection('rule168');
+    }
+
+    function closeGuide() {
+        document.getElementById('guideModal').style.display = 'none';
+    }
+
+    function showGuideSection(section) {
+        document.querySelectorAll('.guide-section').forEach(s => s.style.display = 'none');
+        document.getElementById('guide-' + section).style.display = 'block';
+    }
+
+    function exportTripsCSV() {
+        const headers = ['סידור','קו','כיוון','יציאה','תכנון','אחוזון','ערך','פער','NE_נוכחי','NE_אחרי','IN_נוכחי','המלצה','הגדרה','168_תכנון','168_אחוזון'];
+        let csv = headers.join(',') + '\n';
+        tripsResults.forEach(t => {
+            csv += [
+                t.duty_id,
+                t.route,
+                t.direction,
+                t.start_time,
+                t.planned,
+                t.dynamic_pct,
+                t.pct_value ? t.pct_value.toFixed(1) : '-',
+                t.is_last ? 'אחרון' : t.gap_to_next,
+                t.prob_non_exec !== null ? t.prob_non_exec.toFixed(2) : '-',
+                t.prob_non_exec_rec !== null ? t.prob_non_exec_rec.toFixed(2) : '-',
+                t.prob_inaccuracy !== null ? t.prob_inaccuracy.toFixed(2) : '-',
+                t.rec,
+                t.rec_duration,
+                t.duty_168_plan ? 'V' : 'X',
+                t.duty_168_actual ? 'V' : 'X'
+            ].join(',') + '\n';
+        });
+        downloadCSV(csv, 'trips_analysis.csv');
+    }
+
+    function exportDutiesCSV() {
+        const headers = ['סידור','התחלה','סיום','משך','168_תכנון','168_אחוזון','מקטעים_בעייתיים'];
+        let csv = headers.join(',') + '\n';
+        dutiesResults.forEach(d => {
+            const failed = [...new Set([...d.plan_segments.filter(s=>!s.isOk).map(s=>s.num), ...d.actual_segments.filter(s=>!s.isOk).map(s=>s.num)])].join(';');
+            csv += [d.duty_id,d.startTime,d.endTime,(d.total_duration/60).toFixed(1),d.plan_compliant?'V':'X',d.actual_compliant?'V':'X',failed||'-'].join(',') + '\n';
+        });
+        downloadCSV(csv, 'duties_rule168.csv');
+    }
+
+    function downloadCSV(content, filename) {
+        const blob = new Blob(['\ufeff' + content], { type: 'text/csv;charset=utf-8' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(a.href); }, 100);
+    }
+
+    ['filterRoute','filterStatus','filterRec','filter168'].forEach(id => document.getElementById(id).addEventListener('change', renderTrips));
+    document.getElementById('filterDuty168').addEventListener('change', renderDuties);
+    </script>
+</body>
+</html>
